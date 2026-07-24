@@ -71,3 +71,39 @@
 2026-07-24 15:03:02,326 [INFO] bot: Already in a position, skipping signal check.
 2026-07-24 15:04:04,444 [INFO] bot: Candle 2026-07-24 09:34:00 | close=64964.50 ema_fast=64966.67 ema_slow=64974.09 rsi=36.9 atr=30.30
 2026-07-24 15:04:04,843 [INFO] bot: Already in a position, skipping signal check.
+2026-07-24 15:05:02,448 [INFO] bot: Candle 2026-07-24 09:35:00 | close=64970.00 ema_fast=64969.00 ema_slow=64974.18 rsi=37.8 atr=29.86
+2026-07-24 15:05:02,850 [INFO] bot: Already in a position, skipping signal check.
+2026-07-24 15:06:02,192 [INFO] bot: Candle 2026-07-24 09:36:00 | close=64957.00 ema_fast=64961.89 ema_slow=64970.01 rsi=35.8 atr=29.76
+2026-07-24 15:06:02,725 [INFO] bot: Using fixed lot size from settings: 20
+2026-07-24 15:06:02,726 [INFO] bot: SIGNAL SHORT | real_market_price=64957.00 exec_price(testnet)=64655.80 sl=64685.56 tp=64611.17 size=20
+2026-07-24 15:06:02,933 [ERROR] bot: Order placement failed: 400: {'error': {'code': 'insufficient_margin', 'context': {'margin_mode': 'isolated', 'asset_symbol': 'USD', 'available_balance': '121.575229199085557633', 'required_additional_balance': '9.93747145'}}, 'success': False}
+2026-07-24 15:07:02,758 [INFO] bot: Candle 2026-07-24 09:37:00 | close=64982.50 ema_fast=64974.43 ema_slow=64974.92 rsi=42.7 atr=29.32
+2026-07-24 15:08:02,716 [INFO] bot: Candle 2026-07-24 09:38:00 | close=64984.00 ema_fast=64978.17 ema_slow=64976.52 rsi=43.1 atr=28.49
+2026-07-24 15:09:03,096 [INFO] bot: Candle 2026-07-24 09:39:00 | close=64967.00 ema_fast=64970.89 ema_slow=64973.20 rsi=39.8 atr=28.39
+2026-07-24 15:09:03,581 [INFO] bot: Using fixed lot size from settings: 20
+2026-07-24 15:09:03,582 [INFO] bot: SIGNAL SHORT | real_market_price=64967.00 exec_price(testnet)=64655.80 sl=64684.19 tp=64613.22 size=20
+2026-07-24 15:09:03,814 [ERROR] bot: Order placement failed: 400: {'error': {'code': 'insufficient_margin', 'context': {'margin_mode': 'isolated', 'asset_symbol': 'USD', 'available_balance': '121.575229199085557633', 'required_additional_balance': '9.94840526'}}, 'success': False}
+2026-07-24 15:10:01,113 [INFO] bot: Candle 2026-07-24 09:40:00 | close=65024.00 ema_fast=65001.15 ema_slow=64987.38 rsi=52.8 atr=30.87
+2026-07-24 15:10:01,578 [INFO] bot: Using fixed lot size from settings: 20
+2026-07-24 15:10:01,578 [INFO] bot: SIGNAL LONG | real_market_price=65024.00 exec_price(testnet)=64655.80 sl=64624.93 tp=64702.11 size=20
+2026-07-24 15:10:01,822 [ERROR] bot: Order placement failed: 400: {'error': {'code': 'insufficient_margin', 'context': {'margin_mode': 'isolated', 'asset_symbol': 'USD', 'available_balance': '121.575229199085557633', 'required_additional_balance': '9.99195784'}}, 'success': False}
+2026-07-24 15:11:03,630 [INFO] bot: Candle 2026-07-24 09:41:00 | close=65054.50 ema_fast=65025.93 ema_slow=65000.82 rsi=57.9 atr=32.25
+2026-07-24 15:11:04,159 [INFO] bot: Using fixed lot size from settings: 20
+2026-07-24 15:11:04,159 [INFO] bot: SIGNAL LONG | real_market_price=65054.50 exec_price(testnet)=64655.80 sl=64623.55 tp=64704.18 size=20
+2026-07-24 15:11:04,366 [ERROR] bot: Order placement failed: 400: {'error': {'code': 'insufficient_margin', 'context': {'margin_mode': 'isolated', 'asset_symbol': 'USD', 'available_balance': '121.575229199085557633', 'required_additional_balance': '10.06035552'}}, 'success': False}
+2026-07-24 15:12:01,794 [INFO] bot: Candle 2026-07-24 09:42:00 | close=65046.00 ema_fast=65030.73 ema_slow=65006.24 rsi=56.1 atr=30.81
+2026-07-24 15:12:02,374 [INFO] bot: Using fixed lot size from settings: 20
+2026-07-24 15:12:02,375 [INFO] bot: SIGNAL LONG | real_market_price=65046.00 exec_price(testnet)=64655.80 sl=64624.99 tp=64702.02 size=20
+2026-07-24 15:12:02,714 [ERROR] bot: Order placement failed: 400: {'error': {'code': 'insufficient_margin', 'context': {'margin_mode': 'isolated', 'asset_symbol': 'USD', 'available_balance': '121.575229199085557633', 'required_additional_balance': '10.03850064'}}, 'success': False}
+2026-07-24 15:13:02,041 [INFO] bot: Candle 2026-07-24 09:43:00 | close=65062.50 ema_fast=65045.99 ema_slow=65016.85 rsi=58.5 atr=30.66
+2026-07-24 15:13:02,456 [INFO] bot: Using fixed lot size from settings: 20
+2026-07-24 15:13:02,457 [INFO] bot: SIGNAL LONG | real_market_price=65062.50 exec_price(testnet)=64655.80 sl=64625.14 tp=64701.78 size=20
+2026-07-24 15:13:02,683 [ERROR] bot: Order placement failed: 400: {'error': {'code': 'insufficient_margin', 'context': {'margin_mode': 'isolated', 'asset_symbol': 'USD', 'available_balance': '121.575229199085557633', 'required_additional_balance': '10.06541452'}}, 'success': False}
+2026-07-24 15:14:04,353 [INFO] bot: Candle 2026-07-24 09:44:00 | close=65067.00 ema_fast=65055.44 ema_slow=65025.36 rsi=58.9 atr=30.46
+2026-07-24 15:14:04,921 [INFO] bot: Using fixed lot size from settings: 20
+2026-07-24 15:14:04,922 [INFO] bot: SIGNAL LONG | real_market_price=65067.00 exec_price(testnet)=64655.80 sl=64625.34 tp=64701.48 size=20
+2026-07-24 15:14:05,302 [ERROR] bot: Order placement failed: 400: {'error': {'code': 'insufficient_margin', 'context': {'margin_mode': 'isolated', 'asset_symbol': 'USD', 'available_balance': '121.575229199085557633', 'required_additional_balance': '10.08059152'}}, 'success': False}
+2026-07-24 15:15:02,798 [INFO] bot: Candle 2026-07-24 09:45:00 | close=65057.50 ema_fast=65054.01 ema_slow=65028.79 rsi=56.7 atr=28.98
+2026-07-24 15:15:03,271 [INFO] bot: Using fixed lot size from settings: 20
+2026-07-24 15:15:03,271 [INFO] bot: SIGNAL LONG | real_market_price=65057.50 exec_price(testnet)=64655.80 sl=64626.82 tp=64699.27 size=20
+2026-07-24 15:15:03,480 [ERROR] bot: Order placement failed: 400: {'error': {'code': 'insufficient_margin', 'context': {'margin_mode': 'isolated', 'asset_symbol': 'USD', 'available_balance': '121.575229199085557633', 'required_additional_balance': '10.05630832'}}, 'success': False}

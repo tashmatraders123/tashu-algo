@@ -1,31 +1,32 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Create account — Delta Scalper</title>
-<link rel="stylesheet" href="/static/style.css">
-</head>
-<body>
-<div class="auth-wrap">
+{% extends "base.html" %}
+{% block title %}Create account — Aurelius Algo{% endblock %}
+{% block body %}
+<div class="auth-shell">
   <div class="auth-card">
-    <h1>Create your account</h1>
-    <div class="sub">Your own login, your own bot, your own API keys — no one else can see them</div>
+    <div class="brand">
+      {{ coin_glyph() }}
+      <span class="wordmark">Aurelius<span> Algo</span></span>
+    </div>
+    <p class="subtitle">Create your own dashboard account</p>
 
-    {% if error %}<div class="auth-error">{{ error }}</div>{% endif %}
+    {% if error %}
+      <div class="alert alert-error">{{ error }}</div>
+    {% endif %}
 
-    <form method="POST" action="/register">
-      <label for="username">Choose a username</label>
-      <input type="text" id="username" name="username" required autofocus>
-
-      <label for="password">Choose a password</label>
-      <input type="password" id="password" name="password" required minlength="6">
-
-      <button type="submit">Create account</button>
+    <form method="POST" action="{{ url_for('register_page') }}">
+      <div class="field">
+        <label for="username">Username</label>
+        <input type="text" id="username" name="username" autocomplete="username" required autofocus>
+      </div>
+      <div class="field">
+        <label for="password">Password</label>
+        <input type="password" id="password" name="password" autocomplete="new-password" required>
+        <div class="hint">Your trading bot, API keys, and settings stay isolated to this account.</div>
+      </div>
+      <button type="submit" class="btn btn-gold">Create Account</button>
     </form>
 
-    <div class="auth-switch">Already have an account? <a href="/login">Log in</a></div>
+    <p class="foot-link">Already have one? <a href="{{ url_for('login_page') }}">Log in</a></p>
   </div>
 </div>
-</body>
-</html>
+{% endblock %}

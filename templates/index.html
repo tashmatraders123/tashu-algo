@@ -1,284 +1,103 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Delta Scalper — Control Deck</title>
-<link rel="stylesheet" href="/static/style.css">
-</head>
-<body>
+{% extends "base.html" %}
+{% block title %}Dashboard — Aurelius Algo{% endblock %}
+{% block body %}
 
-<div class="topbar">
+<nav class="topnav">
   <div class="brand">
-    <div class="dot" id="liveDot"></div>
-    <div>
-      <div class="title">Delta Scalper — Control Deck</div>
-      <div class="sub">1m trend scalper &middot; real market data &middot; your own account</div>
-    </div>
+    {{ coin_glyph(28) }}
+    <span class="wordmark" style="font-size:17px;">Aurelius<span> Algo</span></span>
   </div>
-  <div class="topbar-right">
-    <div class="status-pill stopped" id="statusPill">STOPPED</div>
-    {% if is_admin %}<a class="logout-link" href="/admin">Admin</a>{% endif %}
-    <span class="username-tag">{{ username }}</span>
-    <a class="logout-link" href="/logout">Log out</a>
+  <div class="nav-right">
+    <span id="status-pill" class="status-pill stopped"><span class="dot"></span>Stopped</span>
+    <span class="user">{{ username }}</span>
+    {% if is_admin %}<a href="{{ url_for('admin_page') }}">Admin</a>{% endif %}
+    <a href="{{ url_for('logout') }}">Log out</a>
   </div>
-</div>
+</nav>
 
-<div class="layout">
+<div class="dash">
+  <!-- Left: trade settings -->
   <div>
     <div class="panel">
-      <h3>Trade settings</h3>
+      <div class="panel-title">Trade Settings</div>
 
-      <label for="symbol">Coin</label>
-      <select id="symbol"></select>
+      <div class="field">
+        <label for="symbol">Coin</label>
+        <select id="symbol">
+          {% for s in common_symbols %}
+          <option value="{{ s }}">{{ s }}</option>
+          {% endfor %}
+        </select>
+      </div>
 
-      <label for="lotSize">Lot size (0 = auto)</label>
-      <input type="number" id="lotSize" min="0" value="0">
+      <div class="field">
+        <label for="fixed_size">Lot size (0 = auto)</label>
+        <input type="number" id="fixed_size" min="0" value="0">
+      </div>
 
       <div class="toggle-row">
-        <span class="label">Live trading (real orders)</span>
-        <label class="switch">
-          <input type="checkbox" id="liveToggle">
-          <span class="slider"></span>
-        </label>
+        <span class="toggle-label warn">Live trading (real orders)</span>
+        <span class="switch">
+          <input type="checkbox" id="live_trading" class="danger">
+          <span class="track"></span>
+        </span>
       </div>
 
       <div class="btn-row">
-        <button class="btn-start" id="startBtn">▶ Start</button>
-        <button class="btn-stop" id="stopBtn" disabled>■ Stop</button>
+        <button id="btn-start" class="btn btn-teal">Start</button>
+        <button id="btn-stop" class="btn btn-red">Stop</button>
       </div>
-
-      <div class="error-banner" id="errorBanner"></div>
-      <div class="footnote">Live trading starts OFF for safety. Orders go to your own Delta account below — nobody else's.</div>
+      <div class="hint" style="margin-top:12px;">
+        Live trading starts OFF for safety. Orders go to your own Delta account below — nobody else's.
+      </div>
     </div>
 
     <div class="panel">
-      <h3>Your Delta API keys</h3>
-      <div class="footnote" id="keyStatus" style="margin-top:0;">Checking...</div>
+      <div class="panel-title">Your Delta API Keys</div>
+      <div class="hint" style="margin-bottom:14px;" id="current-key-label">Current key: —</div>
 
-      <label for="apiKey">API Key</label>
-      <input type="text" id="apiKey" placeholder="Leave blank to keep current key" autocomplete="off">
-
-      <label for="apiSecret">API Secret</label>
-      <input type="text" id="apiSecret" placeholder="Leave blank to keep current secret" autocomplete="off">
-
-      <div class="toggle-row" style="background:rgba(232,163,61,0.06); border-color:rgba(232,163,61,0.25);">
-        <span class="label" style="color:var(--amber);">Use testnet (demo, fake money)</span>
-        <label class="switch">
-          <input type="checkbox" id="testnetToggle" checked>
-          <span class="slider" style="background:#3a3f47;"></span>
-        </label>
+      <div class="field">
+        <label for="api_key">API Key</label>
+        <input type="text" id="api_key" placeholder="Leave blank to keep current key">
+      </div>
+      <div class="field">
+        <label for="api_secret">API Secret</label>
+        <input type="password" id="api_secret" placeholder="Leave blank to keep current secret">
       </div>
 
-      <div class="btn-row">
-        <button class="btn-start" id="saveKeysBtn" style="background:var(--amber); color:#241a05;">Save keys</button>
+      <div class="toggle-row">
+        <span class="toggle-label">Use testnet (demo, fake money)</span>
+        <span class="switch">
+          <input type="checkbox" id="use_testnet">
+          <span class="track"></span>
+        </span>
       </div>
-      <div class="footnote">Only you can see or use these — they're stored under your account and used only by your own bot process.</div>
-    </div>
 
-    <div class="panel">
-      <h3>Account</h3>
-      <div class="stat-grid">
-        <div class="stat">
-          <div class="k">Balance</div>
-          <div class="v" id="balanceVal">—</div>
-        </div>
-        <div class="stat">
-          <div class="k">Open position</div>
-          <div class="v" id="positionVal">—</div>
-        </div>
-      </div>
-      <div class="footnote" id="accountNote"></div>
+      <button id="btn-save-settings" class="btn btn-ghost">Save Settings</button>
     </div>
   </div>
 
-  <div class="console">
-    <div class="console-head">
-      <div class="title">Live log</div>
-      <div class="console-controls">
-        <label><input type="checkbox" id="autoscroll" checked> Auto-scroll</label>
-        <button class="clear-btn" id="clearBtn">Clear view</button>
+  <!-- Right: live log -->
+  <div>
+    <div class="panel">
+      <div class="panel-title">
+        Live Log
+        <span class="tools">
+          <label><input type="checkbox" id="auto-scroll" checked> Auto-scroll</label>
+          <button id="btn-clear-log" class="btn btn-ghost btn-sm">Clear view</button>
+        </span>
+      </div>
+      <div id="log-console" class="log-console">
+        <div class="empty">Waiting for log output…</div>
       </div>
     </div>
-    <div class="console-body" id="consoleBody"></div>
   </div>
 </div>
 
+{% endblock %}
+
+{% block scripts %}
 <script>
-const COMMON_SYMBOLS_FALLBACK = {{ common_symbols | tojson }};
-
-let logOffset = 0;
-let running = false;
-let symbolsLoaded = false;
-
-const el = (id) => document.getElementById(id);
-
-function classifyLine(line) {
-  if (line.includes("[ERROR]")) return "line-error";
-  if (line.includes("[WARNING]")) return "line-warning";
-  if (line.includes("SIGNAL") || line.includes("Order placed") || line.includes("Entry order") || line.includes("Bracket")) return "line-signal";
-  return "line-info";
-}
-
-function appendLine(line) {
-  const body = el("consoleBody");
-  const div = document.createElement("div");
-  div.className = classifyLine(line);
-  div.textContent = line;
-  body.appendChild(div);
-  if (el("autoscroll").checked) body.scrollTop = body.scrollHeight;
-}
-
-async function pollLogs() {
-  try {
-    const res = await fetch(`/api/logs?since=${logOffset}`);
-    if (res.status === 401) { window.location.href = "/login"; return; }
-    const data = await res.json();
-    logOffset = data.offset;
-    data.lines.forEach(appendLine);
-  } catch (e) { /* ignore */ }
-}
-
-async function pollStatus() {
-  try {
-    const res = await fetch("/api/status");
-    if (res.status === 401) { window.location.href = "/login"; return; }
-    const data = await res.json();
-
-    if (!symbolsLoaded) {
-      const symbols = data.common_symbols && data.common_symbols.length ? data.common_symbols : COMMON_SYMBOLS_FALLBACK;
-      symbols.forEach(s => {
-        const opt = document.createElement("option");
-        opt.value = s; opt.textContent = s;
-        el("symbol").appendChild(opt);
-      });
-      el("symbol").value = data.symbol;
-      el("lotSize").value = data.fixed_size;
-      el("liveToggle").checked = !data.dry_run;
-      symbolsLoaded = true;
-    }
-
-    running = data.running;
-    el("statusPill").textContent = running ? "RUNNING" : "STOPPED";
-    el("statusPill").className = "status-pill " + (running ? "running" : "stopped");
-    el("liveDot").className = "dot" + (running ? " live" : "");
-    el("startBtn").disabled = running || !data.has_api_keys;
-    el("stopBtn").disabled = !running;
-    el("symbol").disabled = running;
-
-    el("keyStatus").textContent = data.has_api_keys
-      ? `Current key: ${data.api_key_masked}`
-      : "No API key saved yet — add one below before starting";
-  } catch (e) { /* ignore */ }
-}
-
-async function pollAccount() {
-  try {
-    const res = await fetch("/api/account");
-    const data = await res.json();
-    if (data.ok) {
-      el("balanceVal").textContent = "$" + Number(data.balance).toFixed(2);
-      if (data.position) {
-        const pnl = Number(data.position.unrealized_pnl || 0);
-        el("positionVal").textContent = `${data.position.size} @ ${data.position.entry_price}`;
-        el("positionVal").className = "v " + (pnl >= 0 ? "pos" : "neg");
-      } else {
-        el("positionVal").textContent = "None";
-        el("positionVal").className = "v";
-      }
-      el("accountNote").textContent = "";
-    } else {
-      el("accountNote").textContent = data.error || "Could not load account info";
-    }
-  } catch (e) { /* ignore */ }
-}
-
-async function loadSettings() {
-  try {
-    const res = await fetch("/api/settings");
-    const data = await res.json();
-    el("testnetToggle").checked = !!data.use_testnet;
-  } catch (e) { /* ignore */ }
-}
-
-function showError(msg) {
-  const banner = el("errorBanner");
-  banner.textContent = msg;
-  banner.style.display = "block";
-  setTimeout(() => { banner.style.display = "none"; }, 6000);
-}
-
-el("startBtn").addEventListener("click", async () => {
-  const symbol = el("symbol").value;
-  const lot = el("lotSize").value;
-  const live = el("liveToggle").checked;
-
-  if (live) {
-    const ok = confirm(
-      "Live trading is ON. This will place REAL orders on YOUR Delta account. Continue?"
-    );
-    if (!ok) return;
-  }
-
-  el("startBtn").disabled = true;
-  try {
-    const res = await fetch("/api/start", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ symbol, fixed_size: lot, live_trading: live }),
-    });
-    const data = await res.json();
-    if (!data.ok) { showError(data.error || "Failed to start"); el("startBtn").disabled = false; }
-  } catch (e) {
-    showError("Could not reach the server.");
-    el("startBtn").disabled = false;
-  }
-});
-
-el("stopBtn").addEventListener("click", async () => {
-  el("stopBtn").disabled = true;
-  try {
-    const res = await fetch("/api/stop", { method: "POST" });
-    const data = await res.json();
-    if (!data.ok) showError(data.error || "Failed to stop");
-  } catch (e) {
-    showError("Could not reach the server.");
-  }
-});
-
-el("saveKeysBtn").addEventListener("click", async () => {
-  const api_key = el("apiKey").value.trim();
-  const api_secret = el("apiSecret").value.trim();
-  const use_testnet = el("testnetToggle").checked;
-  try {
-    const res = await fetch("/api/settings", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ api_key, api_secret, use_testnet }),
-    });
-    const data = await res.json();
-    if (data.ok) {
-      el("apiKey").value = "";
-      el("apiSecret").value = "";
-      pollStatus();
-    } else {
-      showError(data.error || "Failed to save");
-    }
-  } catch (e) {
-    showError("Could not reach the server.");
-  }
-});
-
-el("clearBtn").addEventListener("click", () => { el("consoleBody").innerHTML = ""; });
-
-pollStatus();
-pollLogs();
-pollAccount();
-loadSettings();
-setInterval(pollStatus, 1500);
-setInterval(pollLogs, 1000);
-setInterval(pollAccount, 5000);
+  window.AURELIUS_COMMON_SYMBOLS = {{ common_symbols | tojson }};
 </script>
-
-</body>
-</html>
+{% endblock %}
