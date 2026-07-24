@@ -1,0 +1,18 @@
+[Unit]
+Description=Delta Exchange Scalping Bot
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+# EDIT these two paths to match where you put the project and your user
+User=ubuntu
+WorkingDirectory=/home/ubuntu/delta-scalper
+ExecStart=/home/ubuntu/delta-scalper/venv/bin/python /home/ubuntu/delta-scalper/bot.py
+Restart=always
+RestartSec=10
+StandardOutput=append:/home/ubuntu/delta-scalper/service.log
+StandardError=append:/home/ubuntu/delta-scalper/service.log
+
+[Install]
+WantedBy=multi-user.target

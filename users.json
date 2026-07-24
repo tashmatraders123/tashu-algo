@@ -1,0 +1,28 @@
+{
+  "tashu algo": {
+    "password_hash": "scrypt:32768:8:1$VUET17wnMjZAfyDW$03b6f1e55045c89bfdce90c5c5b2885cf404b0488dacc1d7f7aed4eb1550ae5792ef4d2b4d6203be5751bf4edaa09b8ffec61dc174be8d9c5147d7df63519880",
+    "settings": {
+      "api_key": "3mUAWPbdXt9mxnREFokEm5beNFzTUO",
+      "api_secret": "t5AK4ZDYXpoEQkuucSOK13r4R9cxyx2ueohMem09gWUYyIgxl7KPPw8NEZgx",
+      "use_testnet": true,
+      "symbol": "BTCUSD",
+      "fixed_size": 100,
+      "dry_run": false
+    },
+    "is_admin": true,
+    "approved": true
+  },
+  "mathur.prashant2013@gmail.com": {
+    "password_hash": "scrypt:32768:8:1$u24j9xBpKJFOv4rf$31845e67b896835b3805af0682722c5cb5eea62bffb7b9961c5564e58b56e2ac08d00a9f112be537df584ab85cd4eb90ea42d3d536608f1cd4dedfc9c6d31bb4",
+    "settings": {
+      "api_key": "IkROHSoeylk2skLcdgKNyC9log8eGh",
+      "api_secret": "DfMbDLu71wVmm0iD0Se7X03O4bSpFD7Sv1kvUVI6b5JoLMWqswlgkT0Qzneq",
+      "use_testnet": true,
+      "symbol": "BTCUSD",
+      "fixed_size": 20,
+      "dry_run": false
+    },
+    "is_admin": false,
+    "approved": true
+  }
+}

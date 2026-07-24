@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Create account — Delta Scalper</title>
+<link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<div class="auth-wrap">
+  <div class="auth-card">
+    <h1>Create your account</h1>
+    <div class="sub">Your own login, your own bot, your own API keys — no one else can see them</div>
+
+    {% if error %}<div class="auth-error">{{ error }}</div>{% endif %}
+
+    <form method="POST" action="/register">
+      <label for="username">Choose a username</label>
+      <input type="text" id="username" name="username" required autofocus>
+
+      <label for="password">Choose a password</label>
+      <input type="password" id="password" name="password" required minlength="6">
+
+      <button type="submit">Create account</button>
+    </form>
+
+    <div class="auth-switch">Already have an account? <a href="/login">Log in</a></div>
+  </div>
+</div>
+</body>
+</html>

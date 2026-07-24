@@ -1,0 +1,99 @@
+2026-07-24 14:26:05,628 [INFO] bot: Starting bot | symbol=BTCUSD resolution=1m dry_run=False testnet=True
+2026-07-24 14:26:05,628 [INFO] bot: Market data source : https://api.india.delta.exchange (real market)
+2026-07-24 14:26:05,628 [INFO] bot: Order execution on : https://cdn-ind.testnet.deltaex.org (your account)
+2026-07-24 14:26:09,468 [INFO] bot: Product resolved: id=84 contract_value=0.001
+2026-07-24 14:26:09,662 [WARNING] bot: Could not set leverage (continuing anyway): 400: {'error': {'code': 'unsupported'}, 'success': False}
+2026-07-24 14:26:10,279 [INFO] bot: Candle 2026-07-24 08:56:00 | close=65311.00 ema_fast=65320.48 ema_slow=65352.40 rsi=31.4 atr=16.28
+2026-07-24 14:26:10,939 [INFO] bot: Using fixed lot size from settings: 100
+2026-07-24 14:26:10,940 [INFO] bot: SIGNAL SHORT | real_market_price=65311.00 exec_price(testnet)=64655.80 sl=64672.08 tp=64631.38 size=100
+2026-07-24 14:26:12,830 [ERROR] bot: Order placement failed: 400: {'error': {'code': 'bracket_order_immediate_execution'}, 'success': False}
+2026-07-24 14:27:04,633 [INFO] bot: Candle 2026-07-24 08:57:00 | close=65305.50 ema_fast=65315.15 ema_slow=65345.51 rsi=30.1 atr=15.44
+2026-07-24 14:27:05,042 [INFO] bot: Already in a position, skipping signal check.
+2026-07-24 14:28:02,250 [INFO] bot: Candle 2026-07-24 08:58:00 | close=65304.00 ema_fast=65311.32 ema_slow=65339.52 rsi=29.8 atr=14.97
+2026-07-24 14:28:02,640 [INFO] bot: Already in a position, skipping signal check.
+2026-07-24 14:29:04,485 [INFO] bot: Candle 2026-07-24 08:59:00 | close=65295.00 ema_fast=65303.88 ema_slow=65332.06 rsi=28.2 atr=14.97
+2026-07-24 14:29:04,897 [INFO] bot: Already in a position, skipping signal check.
+2026-07-24 14:30:02,352 [INFO] bot: Candle 2026-07-24 09:00:00 | close=65282.50 ema_fast=65293.64 ema_slow=65323.27 rsi=26.6 atr=14.97
+2026-07-24 14:30:02,806 [INFO] bot: Already in a position, skipping signal check.
+2026-07-24 14:31:02,351 [INFO] bot: Candle 2026-07-24 09:01:00 | close=65290.00 ema_fast=65293.87 ema_slow=65319.31 rsi=29.9 atr=14.47
+2026-07-24 14:31:02,787 [INFO] bot: Already in a position, skipping signal check.
+2026-07-24 14:32:02,484 [INFO] bot: Candle 2026-07-24 09:02:00 | close=65289.00 ema_fast=65292.25 ema_slow=65314.98 rsi=29.7 atr=14.63
+2026-07-24 14:32:02,898 [INFO] bot: Already in a position, skipping signal check.
+2026-07-24 14:33:04,535 [INFO] bot: Candle 2026-07-24 09:03:00 | close=65273.50 ema_fast=65282.33 ema_slow=65307.03 rsi=27.2 atr=15.28
+2026-07-24 14:33:05,038 [INFO] bot: Already in a position, skipping signal check.
+2026-07-24 14:34:04,804 [INFO] bot: Candle 2026-07-24 09:04:00 | close=65267.50 ema_fast=65276.06 ema_slow=65300.65 rsi=25.8 atr=14.59
+2026-07-24 14:34:05,256 [INFO] bot: Already in a position, skipping signal check.
+2026-07-24 14:35:03,309 [INFO] bot: Candle 2026-07-24 09:05:00 | close=65181.00 ema_fast=65224.93 ema_slow=65272.84 rsi=16.4 atr=19.56
+2026-07-24 14:35:03,794 [INFO] bot: Already in a position, skipping signal check.
+2026-07-24 14:36:02,304 [INFO] bot: Candle 2026-07-24 09:06:00 | close=65110.00 ema_fast=65170.39 ema_slow=65240.64 rsi=12.7 atr=23.19
+2026-07-24 14:36:02,710 [INFO] bot: Already in a position, skipping signal check.
+2026-07-24 14:37:04,373 [INFO] bot: Candle 2026-07-24 09:07:00 | close=65107.50 ema_fast=65149.32 ema_slow=65221.56 rsi=12.4 atr=23.80
+2026-07-24 14:37:04,783 [INFO] bot: Already in a position, skipping signal check.
+2026-07-24 14:38:04,321 [INFO] bot: Candle 2026-07-24 09:08:00 | close=65124.50 ema_fast=65145.05 ema_slow=65209.90 rsi=17.7 atr=27.12
+2026-07-24 14:38:04,711 [INFO] bot: Already in a position, skipping signal check.
+2026-07-24 14:39:04,197 [INFO] bot: Candle 2026-07-24 09:09:00 | close=65117.50 ema_fast=65134.31 ema_slow=65195.84 rsi=17.2 atr=26.88
+2026-07-24 14:39:04,590 [INFO] bot: Already in a position, skipping signal check.
+2026-07-24 14:40:02,232 [INFO] bot: Candle 2026-07-24 09:10:00 | close=65107.50 ema_fast=65123.15 ema_slow=65182.00 rsi=16.5 atr=25.76
+2026-07-24 14:40:02,703 [INFO] bot: Already in a position, skipping signal check.
+2026-07-24 14:41:01,179 [INFO] bot: Candle 2026-07-24 09:11:00 | close=65091.50 ema_fast=65109.04 ema_slow=65167.11 rsi=15.4 atr=26.31
+2026-07-24 14:41:01,578 [INFO] bot: Already in a position, skipping signal check.
+2026-07-24 14:42:03,511 [INFO] bot: Candle 2026-07-24 09:12:00 | close=65078.50 ema_fast=65095.97 ema_slow=65152.86 rsi=14.6 atr=27.45
+2026-07-24 14:42:03,920 [INFO] bot: Already in a position, skipping signal check.
+2026-07-24 14:43:01,518 [INFO] bot: Candle 2026-07-24 09:13:00 | close=65080.00 ema_fast=65090.98 ema_slow=65142.63 rsi=15.2 atr=25.92
+2026-07-24 14:43:01,945 [INFO] bot: Already in a position, skipping signal check.
+2026-07-24 14:44:01,676 [INFO] bot: Candle 2026-07-24 09:14:00 | close=65057.00 ema_fast=65077.10 ema_slow=65128.99 rsi=13.6 atr=26.28
+2026-07-24 14:44:02,098 [INFO] bot: Already in a position, skipping signal check.
+2026-07-24 14:45:01,821 [INFO] bot: Candle 2026-07-24 09:15:00 | close=65021.50 ema_fast=65050.90 ema_slow=65109.41 rsi=11.7 atr=26.87
+2026-07-24 14:45:02,304 [INFO] bot: Already in a position, skipping signal check.
+2026-07-24 14:46:02,241 [INFO] bot: Candle 2026-07-24 09:16:00 | close=64988.00 ema_fast=65020.82 ema_slow=65087.05 rsi=12.5 atr=30.96
+2026-07-24 14:46:02,888 [INFO] bot: Already in a position, skipping signal check.
+2026-07-24 14:47:02,914 [INFO] bot: Candle 2026-07-24 09:17:00 | close=65033.50 ema_fast=65035.27 ema_slow=65085.03 rsi=25.5 atr=32.63
+2026-07-24 14:47:03,368 [INFO] bot: Already in a position, skipping signal check.
+2026-07-24 14:48:03,463 [INFO] bot: Candle 2026-07-24 09:18:00 | close=65010.50 ema_fast=65022.46 ema_slow=65071.87 rsi=23.6 atr=32.17
+2026-07-24 14:48:03,869 [INFO] bot: Already in a position, skipping signal check.
+2026-07-24 14:49:02,189 [INFO] bot: Candle 2026-07-24 09:19:00 | close=64990.00 ema_fast=65007.08 ema_slow=65057.67 rsi=22.1 atr=31.37
+2026-07-24 14:49:02,598 [INFO] bot: Already in a position, skipping signal check.
+2026-07-24 14:50:04,673 [INFO] bot: Candle 2026-07-24 09:20:00 | close=64978.00 ema_fast=64994.50 ema_slow=65044.69 rsi=21.4 atr=33.13
+2026-07-24 14:50:05,052 [INFO] bot: Already in a position, skipping signal check.
+2026-07-24 14:51:02,523 [INFO] bot: Candle 2026-07-24 09:21:00 | close=64977.50 ema_fast=64988.50 ema_slow=65034.91 rsi=21.4 atr=32.46
+2026-07-24 14:51:02,906 [INFO] bot: Already in a position, skipping signal check.
+2026-07-24 14:52:03,893 [INFO] bot: Candle 2026-07-24 09:22:00 | close=64961.50 ema_fast=64975.72 ema_slow=65022.34 rsi=20.1 atr=32.13
+2026-07-24 14:52:04,340 [INFO] bot: Already in a position, skipping signal check.
+2026-07-24 14:53:04,383 [INFO] bot: Candle 2026-07-24 09:23:00 | close=64940.50 ema_fast=64958.54 ema_slow=65007.65 rsi=19.2 atr=32.41
+2026-07-24 14:53:04,789 [INFO] bot: Already in a position, skipping signal check.
+2026-07-24 14:54:02,293 [INFO] bot: Candle 2026-07-24 09:24:00 | close=64969.50 ema_fast=64968.86 ema_slow=65005.87 rsi=27.5 atr=32.19
+2026-07-24 14:54:02,699 [INFO] bot: Already in a position, skipping signal check.
+2026-07-24 14:55:02,740 [INFO] bot: Candle 2026-07-24 09:25:00 | close=64951.50 ema_fast=64958.85 ema_slow=64995.78 rsi=25.9 atr=31.36
+2026-07-24 14:55:03,148 [INFO] bot: Already in a position, skipping signal check.
+2026-07-24 14:56:02,706 [INFO] bot: Candle 2026-07-24 09:26:00 | close=64986.00 ema_fast=64975.57 ema_slow=64998.61 rsi=34.3 atr=33.27
+2026-07-24 14:56:03,128 [INFO] bot: Already in a position, skipping signal check.
+2026-07-24 14:57:03,155 [INFO] bot: Candle 2026-07-24 09:27:00 | close=64979.50 ema_fast=64975.66 ema_slow=64995.20 rsi=33.5 atr=32.49
+2026-07-24 14:57:03,819 [INFO] bot: Already in a position, skipping signal check.
+2026-07-24 14:58:03,284 [INFO] bot: Candle 2026-07-24 09:28:00 | close=64964.50 ema_fast=64969.16 ema_slow=64989.29 rsi=31.7 atr=31.24
+2026-07-24 14:58:03,734 [INFO] bot: Already in a position, skipping signal check.
+2026-07-24 14:59:03,550 [INFO] bot: Candle 2026-07-24 09:29:00 | close=64948.50 ema_fast=64959.61 ema_slow=64981.99 rsi=29.9 atr=31.06
+2026-07-24 14:59:03,997 [INFO] bot: Already in a position, skipping signal check.
+2026-07-24 15:00:05,822 [INFO] bot: Candle 2026-07-24 09:30:00 | close=64960.00 ema_fast=64959.74 ema_slow=64978.85 rsi=33.1 atr=30.56
+2026-07-24 15:00:06,458 [INFO] bot: Already in a position, skipping signal check.
+2026-07-24 15:01:01,562 [INFO] bot: Candle 2026-07-24 09:31:00 | close=64968.00 ema_fast=64964.27 ema_slow=64978.28 rsi=35.1 atr=29.31
+2026-07-24 15:01:01,954 [INFO] bot: Already in a position, skipping signal check.
+2026-07-24 15:02:04,014 [INFO] bot: Candle 2026-07-24 09:32:00 | close=64956.50 ema_fast=64959.12 ema_slow=64973.76 rsi=33.5 atr=28.64
+2026-07-24 15:02:04,399 [INFO] bot: Already in a position, skipping signal check.
+2026-07-24 15:03:02,252 [INFO] bot: Candle 2026-07-24 09:33:00 | close=64969.50 ema_fast=64965.25 ema_slow=64974.62 rsi=37.0 atr=29.45
+2026-07-24 15:03:02,668 [INFO] bot: Already in a position, skipping signal check.
+2026-07-24 15:04:05,039 [INFO] bot: Candle 2026-07-24 09:34:00 | close=64964.50 ema_fast=64966.67 ema_slow=64974.09 rsi=36.9 atr=30.30
+2026-07-24 15:04:05,523 [INFO] bot: Already in a position, skipping signal check.
+2026-07-24 15:05:03,287 [INFO] bot: Candle 2026-07-24 09:35:00 | close=64970.00 ema_fast=64969.00 ema_slow=64974.18 rsi=37.8 atr=29.86
+2026-07-24 15:05:03,695 [INFO] bot: Already in a position, skipping signal check.
+2026-07-24 15:06:03,520 [INFO] bot: Candle 2026-07-24 09:36:00 | close=64957.00 ema_fast=64961.89 ema_slow=64970.01 rsi=35.8 atr=29.76
+2026-07-24 15:06:03,955 [INFO] bot: Already in a position, skipping signal check.
+2026-07-24 15:07:01,332 [INFO] bot: Candle 2026-07-24 09:37:00 | close=64982.50 ema_fast=64974.43 ema_slow=64974.92 rsi=42.7 atr=29.32
+2026-07-24 15:07:01,760 [INFO] bot: Already in a position, skipping signal check.
+2026-07-24 15:08:03,878 [INFO] bot: Candle 2026-07-24 09:38:00 | close=64984.00 ema_fast=64978.17 ema_slow=64976.52 rsi=43.1 atr=28.49
+2026-07-24 15:08:04,282 [INFO] bot: Already in a position, skipping signal check.
+2026-07-24 15:09:01,790 [INFO] bot: Candle 2026-07-24 09:39:00 | close=64967.00 ema_fast=64970.89 ema_slow=64973.20 rsi=39.8 atr=28.39
+2026-07-24 15:09:02,192 [INFO] bot: Already in a position, skipping signal check.
+2026-07-24 15:10:02,203 [INFO] bot: Candle 2026-07-24 09:40:00 | close=65024.00 ema_fast=65001.15 ema_slow=64987.38 rsi=52.8 atr=30.87
+2026-07-24 15:10:02,609 [INFO] bot: Already in a position, skipping signal check.
+2026-07-24 15:11:02,636 [INFO] bot: Candle 2026-07-24 09:41:00 | close=65054.50 ema_fast=65025.93 ema_slow=65000.82 rsi=57.9 atr=32.25
+2026-07-24 15:11:03,028 [INFO] bot: Already in a position, skipping signal check.
