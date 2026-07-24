@@ -78,6 +78,10 @@ class ScalpingBot:
         self.product_id = None
         self.contract_value = 1.0
         self.last_candle_time = None
+        # Tracks the currently open trade so we can manage its exit across
+        # cycles (1:1 checkpoint, volatility check, ATR trailing). None
+        # when flat. Reset to None whenever the position is confirmed closed.
+        self.open_trade = None
 
     def setup(self):
         log.info(
@@ -108,7 +112,10 @@ class ScalpingBot:
 
     def has_open_position(self):
         if config.DRY_RUN:
-            return False
+            # No real exchange position to check, but we still simulate
+            # holding the trade we last "entered" so the 1:1 / trailing
+            # management logic can be exercised safely before going live.
+            return self.open_trade is not None
         positions = self.trade_client.get_positions(self.product_id)
         if isinstance(positions, dict):
             positions = [positions]
@@ -122,6 +129,144 @@ class ScalpingBot:
         start = end - (config.CANDLE_LOOKBACK * 60)
         candles = self.data_client.get_candles(config.SYMBOL, config.RESOLUTION, start, end)
         return strategy.candles_to_df(candles)
+
+    def get_exec_price(self, real_market_price):
+        """
+        real_market_price decided the DIRECTION and the ATR (volatility)
+        used for SL/TP distance. But the actual order/position lives on
+        your trade account (demo/testnet), which can sit at a different
+        price than the real market -- so anywhere we need the trade
+        account's own current price (new entries, or managing an open
+        trade), we anchor to it instead of the real market price.
+        """
+        if config.DRY_RUN:
+            return real_market_price
+        try:
+            trade_ticker = self.trade_client.get_ticker(config.SYMBOL)
+            return float(trade_ticker["close"])
+        except DeltaAPIError as e:
+            log.warning("Could not fetch trade-account price, using real market price instead: %s", e)
+            return real_market_price
+
+    def manage_position(self, last_candle):
+        """
+        Called every cycle while a tracked trade is open. Implements:
+          - Close the FULL position once price reaches 1:1 (1R profit),
+            UNLESS the market has gotten meaningfully more volatile since
+            entry (ATR expanded past VOLATILITY_ATR_EXPANSION_PCT).
+          - If volatile at the 1:1 checkpoint, cancel the fixed 1:2 TP and
+            switch to an ATR-multiple trailing stop instead, letting the
+            trade ride further.
+          - While trailing, tighten the stop each cycle as price makes new
+            favorable extremes -- never loosen it.
+        """
+        trade = self.open_trade
+        if trade is None:
+            log.info("Already in a position, but no tracked state for it "
+                      "(likely opened outside this session). Skipping management.")
+            return
+
+        real_market_price = float(last_candle["close"])
+        current_price = self.get_exec_price(real_market_price)
+        current_atr = float(last_candle["atr"])
+
+        # Track the best (most favorable) price seen so far in this trade.
+        if trade["direction"] == "long":
+            trade["extreme_price"] = max(trade["extreme_price"], current_price)
+        else:
+            trade["extreme_price"] = min(trade["extreme_price"], current_price)
+
+        r = strategy.r_multiple(
+            trade["direction"], trade["entry_price"], current_price, trade["sl_distance"]
+        )
+
+        if trade["stage"] == "initial":
+            if r >= 1.0:
+                expansion_pct = getattr(config, "VOLATILITY_ATR_EXPANSION_PCT", 20.0)
+                volatile = strategy.atr_expanded(trade["entry_atr"], current_atr, expansion_pct)
+
+                if not volatile:
+                    log.info(
+                        "1:1 reached (R=%.2f) and volatility unchanged (entry_atr=%.2f "
+                        "current_atr=%.2f) -- closing full position at market.",
+                        r, trade["entry_atr"], current_atr,
+                    )
+                    self._close_full_position(trade)
+                    return
+                else:
+                    trail_mult = getattr(config, "TRAIL_ATR_MULT", 1.5)
+                    new_stop = strategy.compute_trailing_stop(
+                        trade["direction"], trade["extreme_price"], current_atr, trail_mult
+                    )
+                    log.info(
+                        "1:1 reached (R=%.2f) but ATR expanded %.1f%% since entry -- "
+                        "cancelling fixed TP, switching to ATR trailing stop (initial trail stop=%.2f).",
+                        r, ((current_atr - trade["entry_atr"]) / trade["entry_atr"]) * 100.0, new_stop,
+                    )
+                    trade["stage"] = "trailing"
+                    trade["current_stop"] = new_stop
+                    if not config.DRY_RUN:
+                        far_tp = self._far_take_profit(trade)
+                        try:
+                            self.trade_client.replace_stop_loss(
+                                self.product_id, config.SYMBOL, trade["side"], trade["size"],
+                                new_stop, far_tp,
+                            )
+                        except DeltaAPIError as e:
+                            log.error("Failed to switch to trailing stop: %s", e)
+                    return
+            else:
+                log.info("In position, R=%.2f (below 1:1 checkpoint), holding.", r)
+                return
+
+        elif trade["stage"] == "trailing":
+            trail_mult = getattr(config, "TRAIL_ATR_MULT", 1.5)
+            candidate_stop = strategy.compute_trailing_stop(
+                trade["direction"], trade["extreme_price"], current_atr, trail_mult
+            )
+            # Only ever tighten the stop in the favorable direction.
+            if trade["direction"] == "long":
+                improved = candidate_stop > trade["current_stop"]
+            else:
+                improved = candidate_stop < trade["current_stop"]
+
+            if improved:
+                log.info(
+                    "Trailing stop moving %.2f -> %.2f (R=%.2f, atr=%.2f).",
+                    trade["current_stop"], candidate_stop, r, current_atr,
+                )
+                trade["current_stop"] = candidate_stop
+                if not config.DRY_RUN:
+                    far_tp = self._far_take_profit(trade)
+                    try:
+                        self.trade_client.replace_stop_loss(
+                            self.product_id, config.SYMBOL, trade["side"], trade["size"],
+                            candidate_stop, far_tp,
+                        )
+                    except DeltaAPIError as e:
+                        log.error("Failed to update trailing stop: %s", e)
+            else:
+                log.info("Trailing (R=%.2f, atr=%.2f), stop holds at %.2f.", r, current_atr, trade["current_stop"])
+
+    def _far_take_profit(self, trade):
+        # A deliberately distant TP so it doesn't interfere while the
+        # trailing stop is doing the real exit management.
+        far_dist = trade["sl_distance"] * 20
+        if trade["direction"] == "long":
+            return trade["entry_price"] + far_dist
+        return trade["entry_price"] - far_dist
+
+    def _close_full_position(self, trade):
+        if not config.DRY_RUN:
+            try:
+                self.trade_client.cancel_all_orders(self.product_id)
+                self.trade_client.close_position(
+                    self.product_id, config.SYMBOL, trade["side"], trade["size"]
+                )
+            except DeltaAPIError as e:
+                log.error("Failed to close position at 1:1: %s", e)
+                return
+        self.open_trade = None
 
     def run_cycle(self):
         df = self.fetch_df()
@@ -147,8 +292,20 @@ class ScalpingBot:
             log.warning("Kill switch active, no new entries today.")
             return
 
+        # If we were tracking an open trade but the exchange no longer
+        # shows one open (SL/TP got hit on its own, or it was closed
+        # manually), clear our state so a fresh signal can be taken.
+        if self.open_trade is not None and not config.DRY_RUN:
+            positions = self.trade_client.get_positions(self.product_id)
+            if isinstance(positions, dict):
+                positions = [positions]
+            still_open = any(float(p.get("size", 0) or 0) != 0 for p in positions)
+            if not still_open:
+                log.info("Tracked position no longer open on exchange (SL/TP likely hit). Clearing state.")
+                self.open_trade = None
+
         if self.has_open_position():
-            log.info("Already in a position, skipping signal check.")
+            self.manage_position(last)
             return
 
         now_ts = int(time.time())
@@ -169,17 +326,10 @@ class ScalpingBot:
         # stop-loss/take-profit levels to the trade account's OWN current
         # price -- otherwise a stop/target computed off the real market
         # price could be instantly hit or unreachable on testnet.
-        if config.DRY_RUN:
-            exec_price = real_market_price
-        else:
-            try:
-                trade_ticker = self.trade_client.get_ticker(config.SYMBOL)
-                exec_price = float(trade_ticker["close"])
-            except DeltaAPIError as e:
-                log.warning("Could not fetch trade-account price, using real market price instead: %s", e)
-                exec_price = real_market_price
+        exec_price = self.get_exec_price(real_market_price)
 
         sl_price, tp_price = strategy.compute_sl_tp(exec_price, direction, atr_value)
+        sl_distance = abs(exec_price - sl_price)
 
         if config.FIXED_SIZE > 0:
             size = config.FIXED_SIZE
@@ -218,6 +368,20 @@ class ScalpingBot:
             except DeltaAPIError as e:
                 log.error("Order placement failed: %s", e)
                 return
+
+        # Track this trade so manage_position() can run the 1:1 / trailing
+        # logic on subsequent cycles.
+        self.open_trade = {
+            "direction": direction,
+            "side": side,
+            "size": size,
+            "entry_price": exec_price,
+            "sl_distance": sl_distance,
+            "entry_atr": atr_value,
+            "extreme_price": exec_price,
+            "current_stop": sl_price,
+            "stage": "initial",
+        }
 
         self.risk.mark_trade_taken(now_ts)
 

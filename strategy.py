@@ -112,9 +112,55 @@ def generate_signal(df):
 
 
 def compute_sl_tp(entry_price, direction, atr_value):
+    """
+    SL distance is still ATR-based (SL_ATR_MULT), but TP is now forced to a
+    fixed 1:2 risk-reward ratio off that SL distance (TP_RR_MULT, default
+    2.0) rather than being sized independently off TP_ATR_MULT. This
+    guarantees every trade opens as a genuine 1:2 setup regardless of what
+    TP_ATR_MULT is set to in your .env.
+    """
+    rr_mult = getattr(config, "TP_RR_MULT", 2.0)
     sl_dist = atr_value * config.SL_ATR_MULT
-    tp_dist = atr_value * config.TP_ATR_MULT
+    tp_dist = sl_dist * rr_mult
     if direction == "long":
         return entry_price - sl_dist, entry_price + tp_dist
     else:
         return entry_price + sl_dist, entry_price - tp_dist
+
+
+def r_multiple(direction, entry_price, current_price, sl_distance):
+    """
+    How many multiples of the original risk (R) price has moved in the
+    trade's favor. R=1.0 means price has moved exactly one SL-distance in
+    profit -- the 1:1 checkpoint.
+    """
+    if sl_distance <= 0:
+        return 0.0
+    if direction == "long":
+        return (current_price - entry_price) / sl_distance
+    else:
+        return (entry_price - current_price) / sl_distance
+
+
+def atr_expanded(entry_atr, current_atr, expansion_pct):
+    """
+    True if current ATR has expanded by at least expansion_pct percent
+    versus the ATR at trade entry -- used as the "market is volatile"
+    trigger that switches the trade from a fixed 1:1 exit to a trailing TP.
+    """
+    if entry_atr is None or entry_atr <= 0 or current_atr is None:
+        return False
+    return ((current_atr - entry_atr) / entry_atr) * 100.0 >= expansion_pct
+
+
+def compute_trailing_stop(direction, extreme_price, atr_value, trail_mult):
+    """
+    Trailing stop sits trail_mult * ATR behind the best price seen so far
+    in the trade's favor. Recomputed every cycle; the caller is
+    responsible for only ever tightening it (never loosening) in the
+    favorable direction.
+    """
+    if direction == "long":
+        return extreme_price - (atr_value * trail_mult)
+    else:
+        return extreme_price + (atr_value * trail_mult)

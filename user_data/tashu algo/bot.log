@@ -153,3 +153,191 @@
 2026-07-24 15:38:05,320 [INFO] bot: Already in a position, skipping signal check.
 2026-07-24 15:39:04,744 [INFO] bot: Candle 2026-07-24 10:09:00 | close=65045.50 ema_fast=65057.04 ema_slow=65070.24 rsi=43.2 atr=22.65
 2026-07-24 15:39:05,122 [INFO] bot: Already in a position, skipping signal check.
+2026-07-24 15:40:01,726 [INFO] bot: Candle 2026-07-24 10:10:00 | close=65036.50 ema_fast=65046.19 ema_slow=65063.22 rsi=42.2 atr=23.17
+2026-07-24 15:40:02,172 [INFO] bot: Already in a position, skipping signal check.
+2026-07-24 15:41:04,076 [INFO] bot: Candle 2026-07-24 10:11:00 | close=65054.00 ema_fast=65052.68 ema_slow=65064.04 rsi=46.7 atr=22.68
+2026-07-24 15:41:04,499 [INFO] bot: Already in a position, skipping signal check.
+2026-07-24 15:42:04,231 [INFO] bot: Candle 2026-07-24 10:12:00 | close=65019.00 ema_fast=65035.46 ema_slow=65054.30 rsi=39.9 atr=23.45
+2026-07-24 15:42:04,917 [INFO] bot: Already in a position, skipping signal check.
+2026-07-24 15:43:02,462 [INFO] bot: Candle 2026-07-24 10:13:00 | close=64991.50 ema_fast=65015.03 ema_slow=65042.15 rsi=35.6 atr=24.37
+2026-07-24 15:43:02,882 [INFO] bot: Already in a position, skipping signal check.
+2026-07-24 15:44:02,742 [INFO] bot: Candle 2026-07-24 10:14:00 | close=64978.00 ema_fast=64999.68 ema_slow=65031.33 rsi=33.7 atr=23.63
+2026-07-24 15:44:03,154 [INFO] bot: Already in a position, skipping signal check.
+2026-07-24 15:45:02,710 [INFO] bot: Candle 2026-07-24 10:15:00 | close=64973.00 ema_fast=64991.35 ema_slow=65023.30 rsi=33.2 atr=23.21
+2026-07-24 15:45:02,926 [ERROR] bot: API error in cycle: 401: {'error': {'code': 'ip_not_whitelisted_for_api_key', 'context': {'client_ip': '103.207.65.104'}}, 'success': False}
+2026-07-24 15:46:02,410 [INFO] bot: Candle 2026-07-24 10:16:00 | close=64996.00 ema_fast=64998.01 ema_slow=65022.22 rsi=38.7 atr=23.34
+2026-07-24 15:46:02,616 [ERROR] bot: API error in cycle: 401: {'error': {'code': 'ip_not_whitelisted_for_api_key', 'context': {'client_ip': '103.207.65.104'}}, 'success': False}
+2026-07-24 15:47:04,444 [INFO] bot: Candle 2026-07-24 10:17:00 | close=64982.50 ema_fast=64989.84 ema_slow=65014.89 rsi=36.5 atr=22.68
+2026-07-24 15:47:04,616 [ERROR] bot: API error in cycle: 401: {'error': {'code': 'ip_not_whitelisted_for_api_key', 'context': {'client_ip': '103.207.65.104'}}, 'success': False}
+2026-07-24 15:48:02,012 [INFO] bot: Candle 2026-07-24 10:18:00 | close=64952.00 ema_fast=64970.45 ema_slow=65002.17 rsi=31.9 atr=23.12
+2026-07-24 15:48:02,210 [ERROR] bot: API error in cycle: 401: {'error': {'code': 'ip_not_whitelisted_for_api_key', 'context': {'client_ip': '103.207.65.104'}}, 'success': False}
+2026-07-24 15:49:02,181 [INFO] bot: Candle 2026-07-24 10:19:00 | close=64951.00 ema_fast=64963.74 ema_slow=64994.74 rsi=31.8 atr=22.03
+2026-07-24 15:49:02,354 [ERROR] bot: API error in cycle: 401: {'error': {'code': 'ip_not_whitelisted_for_api_key', 'context': {'client_ip': '103.207.65.104'}}, 'success': False}
+2026-07-24 15:50:04,777 [INFO] bot: Candle 2026-07-24 10:20:00 | close=64950.50 ema_fast=64958.55 ema_slow=64987.99 rsi=32.3 atr=21.08
+2026-07-24 15:50:04,956 [ERROR] bot: API error in cycle: 401: {'error': {'code': 'ip_not_whitelisted_for_api_key', 'context': {'client_ip': '103.207.65.104'}}, 'success': False}
+2026-07-24 15:51:02,769 [INFO] bot: Candle 2026-07-24 10:21:00 | close=64962.00 ema_fast=64964.81 ema_slow=64987.09 rsi=37.1 atr=21.85
+2026-07-24 15:51:02,944 [ERROR] bot: API error in cycle: 401: {'error': {'code': 'ip_not_whitelisted_for_api_key', 'context': {'client_ip': '103.207.65.104'}}, 'success': False}
+2026-07-24 15:52:02,566 [INFO] bot: Candle 2026-07-24 10:22:00 | close=64964.50 ema_fast=64965.26 ema_slow=64984.17 rsi=37.6 atr=21.29
+2026-07-24 15:52:02,734 [ERROR] bot: API error in cycle: 401: {'error': {'code': 'ip_not_whitelisted_for_api_key', 'context': {'client_ip': '103.207.65.104'}}, 'success': False}
+2026-07-24 15:53:05,077 [INFO] bot: Candle 2026-07-24 10:23:00 | close=64976.00 ema_fast=64971.18 ema_slow=64984.29 rsi=40.9 atr=20.60
+2026-07-24 15:53:05,245 [ERROR] bot: API error in cycle: 401: {'error': {'code': 'ip_not_whitelisted_for_api_key', 'context': {'client_ip': '103.207.65.104'}}, 'success': False}
+2026-07-24 15:54:02,780 [INFO] bot: Candle 2026-07-24 10:24:00 | close=64991.50 ema_fast=64981.39 ema_slow=64987.22 rsi=45.2 atr=20.76
+2026-07-24 15:54:02,960 [ERROR] bot: API error in cycle: 401: {'error': {'code': 'ip_not_whitelisted_for_api_key', 'context': {'client_ip': '103.207.65.104'}}, 'success': False}
+2026-07-24 15:55:02,719 [INFO] bot: Candle 2026-07-24 10:25:00 | close=64991.50 ema_fast=64984.76 ema_slow=64987.83 rsi=45.2 atr=20.21
+2026-07-24 15:55:03,014 [ERROR] bot: API error in cycle: 401: {'error': {'code': 'ip_not_whitelisted_for_api_key', 'context': {'client_ip': '103.207.65.104'}}, 'success': False}
+2026-07-24 15:56:03,217 [INFO] bot: Candle 2026-07-24 10:26:00 | close=64978.00 ema_fast=64979.29 ema_slow=64984.65 rsi=42.2 atr=20.23
+2026-07-24 15:56:03,393 [ERROR] bot: API error in cycle: 401: {'error': {'code': 'ip_not_whitelisted_for_api_key', 'context': {'client_ip': '103.207.65.104'}}, 'success': False}
+2026-07-24 15:57:02,914 [INFO] bot: Candle 2026-07-24 10:27:00 | close=64995.00 ema_fast=64988.30 ema_slow=64988.21 rsi=47.0 atr=20.71
+2026-07-24 15:57:03,079 [ERROR] bot: API error in cycle: 401: {'error': {'code': 'ip_not_whitelisted_for_api_key', 'context': {'client_ip': '103.207.65.104'}}, 'success': False}
+2026-07-24 15:58:02,692 [INFO] bot: Candle 2026-07-24 10:28:00 | close=64988.00 ema_fast=64986.65 ema_slow=64987.32 rsi=45.4 atr=20.39
+2026-07-24 15:58:02,906 [ERROR] bot: API error in cycle: 401: {'error': {'code': 'ip_not_whitelisted_for_api_key', 'context': {'client_ip': '103.207.65.104'}}, 'success': False}
+2026-07-24 15:59:04,860 [INFO] bot: Candle 2026-07-24 10:29:00 | close=64986.00 ema_fast=64989.10 ema_slow=64988.60 rsi=45.2 atr=21.29
+2026-07-24 15:59:05,033 [ERROR] bot: API error in cycle: 401: {'error': {'code': 'ip_not_whitelisted_for_api_key', 'context': {'client_ip': '103.207.65.104'}}, 'success': False}
+2026-07-24 16:00:05,887 [INFO] bot: Candle 2026-07-24 10:30:00 | close=64994.00 ema_fast=64991.84 ema_slow=64989.99 rsi=47.3 atr=19.99
+2026-07-24 16:00:06,061 [ERROR] bot: API error in cycle: 401: {'error': {'code': 'ip_not_whitelisted_for_api_key', 'context': {'client_ip': '103.207.65.104'}}, 'success': False}
+2026-07-24 16:01:03,558 [INFO] bot: Candle 2026-07-24 10:31:00 | close=65007.00 ema_fast=65000.01 ema_slow=64994.13 rsi=50.9 atr=21.65
+2026-07-24 16:01:03,753 [ERROR] bot: API error in cycle: 401: {'error': {'code': 'ip_not_whitelisted_for_api_key', 'context': {'client_ip': '103.207.65.104'}}, 'success': False}
+2026-07-24 16:02:03,546 [INFO] bot: Candle 2026-07-24 10:32:00 | close=65008.50 ema_fast=65003.39 ema_slow=64996.49 rsi=51.2 atr=21.24
+2026-07-24 16:02:03,730 [ERROR] bot: API error in cycle: 401: {'error': {'code': 'ip_not_whitelisted_for_api_key', 'context': {'client_ip': '103.207.65.104'}}, 'success': False}
+2026-07-24 16:03:03,359 [INFO] bot: Candle 2026-07-24 10:33:00 | close=64998.00 ema_fast=64999.04 ema_slow=64995.30 rsi=48.3 atr=20.85
+2026-07-24 16:03:03,537 [ERROR] bot: API error in cycle: 401: {'error': {'code': 'ip_not_whitelisted_for_api_key', 'context': {'client_ip': '103.207.65.104'}}, 'success': False}
+2026-07-24 16:04:03,417 [INFO] bot: Candle 2026-07-24 10:34:00 | close=65016.00 ema_fast=65008.92 ema_slow=65000.58 rsi=53.2 atr=20.93
+2026-07-24 16:04:03,593 [ERROR] bot: API error in cycle: 401: {'error': {'code': 'ip_not_whitelisted_for_api_key', 'context': {'client_ip': '103.207.65.104'}}, 'success': False}
+2026-07-24 16:05:03,534 [INFO] bot: Candle 2026-07-24 10:35:00 | close=64993.50 ema_fast=64998.78 ema_slow=64996.82 rsi=47.2 atr=21.26
+2026-07-24 16:05:03,701 [ERROR] bot: API error in cycle: 401: {'error': {'code': 'ip_not_whitelisted_for_api_key', 'context': {'client_ip': '103.207.65.104'}}, 'success': False}
+2026-07-24 16:06:03,722 [INFO] bot: Candle 2026-07-24 10:36:00 | close=64976.50 ema_fast=64987.57 ema_slow=64991.83 rsi=43.2 atr=20.90
+2026-07-24 16:06:03,888 [ERROR] bot: API error in cycle: 401: {'error': {'code': 'ip_not_whitelisted_for_api_key', 'context': {'client_ip': '103.207.65.104'}}, 'success': False}
+2026-07-24 16:07:03,408 [INFO] bot: Candle 2026-07-24 10:37:00 | close=65000.00 ema_fast=64996.72 ema_slow=64995.75 rsi=49.5 atr=21.04
+2026-07-24 16:07:03,687 [ERROR] bot: API error in cycle: 401: {'error': {'code': 'ip_not_whitelisted_for_api_key', 'context': {'client_ip': '103.207.65.104'}}, 'success': False}
+2026-07-24 16:08:03,598 [INFO] bot: Candle 2026-07-24 10:38:00 | close=65020.50 ema_fast=65009.20 ema_slow=65001.80 rsi=54.4 atr=20.90
+2026-07-24 16:08:03,766 [ERROR] bot: API error in cycle: 401: {'error': {'code': 'ip_not_whitelisted_for_api_key', 'context': {'client_ip': '103.207.65.104'}}, 'success': False}
+2026-07-24 16:09:05,741 [INFO] bot: Candle 2026-07-24 10:39:00 | close=65011.50 ema_fast=65008.19 ema_slow=65002.21 rsi=52.0 atr=20.54
+2026-07-24 16:09:05,909 [ERROR] bot: API error in cycle: 401: {'error': {'code': 'ip_not_whitelisted_for_api_key', 'context': {'client_ip': '103.207.65.104'}}, 'success': False}
+2026-07-24 16:10:04,264 [INFO] bot: Candle 2026-07-24 10:40:00 | close=64986.00 ema_fast=64995.79 ema_slow=64997.13 rsi=45.9 atr=20.78
+2026-07-24 16:10:04,438 [ERROR] bot: API error in cycle: 401: {'error': {'code': 'ip_not_whitelisted_for_api_key', 'context': {'client_ip': '103.207.65.104'}}, 'success': False}
+2026-07-24 16:11:04,507 [INFO] bot: Candle 2026-07-24 10:41:00 | close=65000.00 ema_fast=64998.42 ema_slow=64998.22 rsi=49.5 atr=20.63
+2026-07-24 16:11:04,676 [ERROR] bot: API error in cycle: 401: {'error': {'code': 'ip_not_whitelisted_for_api_key', 'context': {'client_ip': '103.207.65.104'}}, 'success': False}
+2026-07-24 16:12:05,228 [INFO] bot: Candle 2026-07-24 10:42:00 | close=65020.50 ema_fast=65010.33 ema_slow=65003.91 rsi=54.3 atr=20.52
+2026-07-24 16:12:05,411 [ERROR] bot: API error in cycle: 401: {'error': {'code': 'ip_not_whitelisted_for_api_key', 'context': {'client_ip': '103.207.65.104'}}, 'success': False}
+2026-07-24 16:13:03,034 [INFO] bot: Candle 2026-07-24 10:43:00 | close=65020.50 ema_fast=65013.72 ema_slow=65006.28 rsi=54.3 atr=19.19
+2026-07-24 16:13:03,208 [ERROR] bot: API error in cycle: 401: {'error': {'code': 'ip_not_whitelisted_for_api_key', 'context': {'client_ip': '103.207.65.104'}}, 'success': False}
+2026-07-24 16:14:03,099 [INFO] bot: Candle 2026-07-24 10:44:00 | close=65009.00 ema_fast=65009.59 ema_slow=65005.26 rsi=51.1 atr=18.58
+2026-07-24 16:14:03,278 [ERROR] bot: API error in cycle: 401: {'error': {'code': 'ip_not_whitelisted_for_api_key', 'context': {'client_ip': '103.207.65.104'}}, 'success': False}
+2026-07-24 16:15:03,376 [INFO] bot: Candle 2026-07-24 10:45:00 | close=64986.50 ema_fast=64999.23 ema_slow=65001.11 rsi=45.4 atr=18.86
+2026-07-24 16:15:03,564 [ERROR] bot: API error in cycle: 401: {'error': {'code': 'ip_not_whitelisted_for_api_key', 'context': {'client_ip': '103.207.65.104'}}, 'success': False}
+2026-07-24 16:16:03,183 [INFO] bot: Candle 2026-07-24 10:46:00 | close=64997.00 ema_fast=65001.04 ema_slow=65001.93 rsi=48.0 atr=18.09
+2026-07-24 16:16:03,357 [ERROR] bot: API error in cycle: 401: {'error': {'code': 'ip_not_whitelisted_for_api_key', 'context': {'client_ip': '103.207.65.104'}}, 'success': False}
+2026-07-24 16:17:03,180 [INFO] bot: Candle 2026-07-24 10:47:00 | close=65012.50 ema_fast=65008.53 ema_slow=65005.46 rsi=52.3 atr=18.16
+2026-07-24 16:17:03,358 [ERROR] bot: API error in cycle: 401: {'error': {'code': 'ip_not_whitelisted_for_api_key', 'context': {'client_ip': '103.207.65.104'}}, 'success': False}
+2026-07-24 16:18:02,797 [INFO] bot: Candle 2026-07-24 10:48:00 | close=65013.50 ema_fast=65010.85 ema_slow=65006.98 rsi=52.5 atr=17.14
+2026-07-24 16:18:02,979 [ERROR] bot: API error in cycle: 401: {'error': {'code': 'ip_not_whitelisted_for_api_key', 'context': {'client_ip': '103.207.65.104'}}, 'success': False}
+2026-07-24 16:19:04,186 [INFO] bot: Candle 2026-07-24 10:49:00 | close=65000.50 ema_fast=65004.51 ema_slow=65004.46 rsi=48.7 atr=17.11
+2026-07-24 16:19:04,355 [ERROR] bot: API error in cycle: 401: {'error': {'code': 'ip_not_whitelisted_for_api_key', 'context': {'client_ip': '103.207.65.104'}}, 'success': False}
+2026-07-24 16:20:10,438 [INFO] bot: Candle 2026-07-24 10:50:00 | close=65000.00 ema_fast=65003.12 ema_slow=65003.88 rsi=48.5 atr=16.19
+2026-07-24 16:20:10,618 [ERROR] bot: API error in cycle: 401: {'error': {'code': 'ip_not_whitelisted_for_api_key', 'context': {'client_ip': '103.207.65.104'}}, 'success': False}
+2026-07-24 16:21:03,604 [INFO] bot: Candle 2026-07-24 10:51:00 | close=64983.00 ema_fast=64991.52 ema_slow=64998.21 rsi=44.2 atr=16.85
+2026-07-24 16:21:03,784 [ERROR] bot: API error in cycle: 401: {'error': {'code': 'ip_not_whitelisted_for_api_key', 'context': {'client_ip': '103.207.65.104'}}, 'success': False}
+2026-07-24 16:22:03,328 [INFO] bot: Candle 2026-07-24 10:52:00 | close=64957.00 ema_fast=64974.02 ema_slow=64989.01 rsi=37.8 atr=18.11
+2026-07-24 16:22:03,497 [ERROR] bot: API error in cycle: 401: {'error': {'code': 'ip_not_whitelisted_for_api_key', 'context': {'client_ip': '103.207.65.104'}}, 'success': False}
+2026-07-24 16:23:03,116 [INFO] bot: Candle 2026-07-24 10:53:00 | close=64921.50 ema_fast=64952.29 ema_slow=64977.04 rsi=31.0 atr=19.35
+2026-07-24 16:23:03,283 [ERROR] bot: API error in cycle: 401: {'error': {'code': 'ip_not_whitelisted_for_api_key', 'context': {'client_ip': '103.207.65.104'}}, 'success': False}
+2026-07-24 16:24:02,990 [INFO] bot: Candle 2026-07-24 10:54:00 | close=64888.00 ema_fast=64923.19 ema_slow=64960.10 rsi=26.7 atr=20.53
+2026-07-24 16:24:03,196 [ERROR] bot: API error in cycle: 401: {'error': {'code': 'ip_not_whitelisted_for_api_key', 'context': {'client_ip': '103.207.65.104'}}, 'success': False}
+2026-07-24 16:25:03,472 [INFO] bot: Candle 2026-07-24 10:55:00 | close=64897.00 ema_fast=64916.24 ema_slow=64952.06 rsi=29.7 atr=20.72
+2026-07-24 16:25:03,650 [ERROR] bot: API error in cycle: 401: {'error': {'code': 'ip_not_whitelisted_for_api_key', 'context': {'client_ip': '103.207.65.104'}}, 'success': False}
+2026-07-24 16:26:03,445 [INFO] bot: Candle 2026-07-24 10:56:00 | close=64925.00 ema_fast=64925.16 ema_slow=64951.50 rsi=38.1 atr=21.67
+2026-07-24 16:26:03,623 [ERROR] bot: API error in cycle: 401: {'error': {'code': 'ip_not_whitelisted_for_api_key', 'context': {'client_ip': '103.207.65.104'}}, 'success': False}
+2026-07-24 16:27:03,536 [INFO] bot: Candle 2026-07-24 10:57:00 | close=64924.00 ema_fast=64924.77 ema_slow=64947.57 rsi=37.9 atr=20.19
+2026-07-24 16:27:03,710 [ERROR] bot: API error in cycle: 401: {'error': {'code': 'ip_not_whitelisted_for_api_key', 'context': {'client_ip': '103.207.65.104'}}, 'success': False}
+2026-07-24 16:28:01,618 [INFO] bot: Candle 2026-07-24 10:58:00 | close=64924.00 ema_fast=64924.52 ema_slow=64944.21 rsi=37.9 atr=18.75
+2026-07-24 16:28:01,786 [ERROR] bot: API error in cycle: 401: {'error': {'code': 'ip_not_whitelisted_for_api_key', 'context': {'client_ip': '103.207.65.104'}}, 'success': False}
+2026-07-24 16:29:03,736 [INFO] bot: Candle 2026-07-24 10:59:00 | close=64929.00 ema_fast=64927.34 ema_slow=64942.77 rsi=39.6 atr=17.88
+2026-07-24 16:29:03,916 [ERROR] bot: API error in cycle: 401: {'error': {'code': 'ip_not_whitelisted_for_api_key', 'context': {'client_ip': '103.207.65.104'}}, 'success': False}
+2026-07-24 16:30:03,861 [INFO] bot: Candle 2026-07-24 11:00:00 | close=64933.50 ema_fast=64930.40 ema_slow=64942.00 rsi=41.0 atr=17.24
+2026-07-24 16:30:04,035 [ERROR] bot: API error in cycle: 401: {'error': {'code': 'ip_not_whitelisted_for_api_key', 'context': {'client_ip': '103.207.65.104'}}, 'success': False}
+2026-07-24 16:31:01,477 [INFO] bot: Candle 2026-07-24 11:01:00 | close=64909.50 ema_fast=64917.87 ema_slow=64934.29 rsi=36.1 atr=18.83
+2026-07-24 16:31:01,644 [ERROR] bot: API error in cycle: 401: {'error': {'code': 'ip_not_whitelisted_for_api_key', 'context': {'client_ip': '103.207.65.104'}}, 'success': False}
+2026-07-24 16:32:01,767 [INFO] bot: Candle 2026-07-24 11:02:00 | close=64927.00 ema_fast=64924.81 ema_slow=64935.39 rsi=41.7 atr=19.38
+2026-07-24 16:32:01,946 [ERROR] bot: API error in cycle: 401: {'error': {'code': 'ip_not_whitelisted_for_api_key', 'context': {'client_ip': '103.207.65.104'}}, 'success': False}
+2026-07-24 16:33:04,172 [INFO] bot: Candle 2026-07-24 11:03:00 | close=64960.00 ema_fast=64943.65 ema_slow=64942.83 rsi=50.5 atr=21.94
+2026-07-24 16:33:04,343 [ERROR] bot: API error in cycle: 401: {'error': {'code': 'ip_not_whitelisted_for_api_key', 'context': {'client_ip': '103.207.65.104'}}, 'success': False}
+2026-07-24 16:34:01,717 [INFO] bot: Candle 2026-07-24 11:04:00 | close=64987.00 ema_fast=64963.99 ema_slow=64952.38 rsi=56.3 atr=22.47
+2026-07-24 16:34:01,896 [ERROR] bot: API error in cycle: 401: {'error': {'code': 'ip_not_whitelisted_for_api_key', 'context': {'client_ip': '103.207.65.104'}}, 'success': False}
+2026-07-24 16:35:04,210 [INFO] bot: Candle 2026-07-24 11:05:00 | close=64976.00 ema_fast=64965.55 ema_slow=64954.41 rsi=53.6 atr=21.93
+2026-07-24 16:35:04,382 [ERROR] bot: API error in cycle: 401: {'error': {'code': 'ip_not_whitelisted_for_api_key', 'context': {'client_ip': '103.207.65.104'}}, 'success': False}
+2026-07-24 16:36:02,595 [INFO] bot: Candle 2026-07-24 11:06:00 | close=65002.50 ema_fast=64983.75 ema_slow=64964.52 rsi=58.8 atr=22.16
+2026-07-24 16:36:02,763 [ERROR] bot: API error in cycle: 401: {'error': {'code': 'ip_not_whitelisted_for_api_key', 'context': {'client_ip': '103.207.65.104'}}, 'success': False}
+2026-07-24 16:37:04,831 [INFO] bot: Candle 2026-07-24 11:07:00 | close=64993.00 ema_fast=64984.72 ema_slow=64967.43 rsi=56.3 atr=22.47
+2026-07-24 16:37:05,008 [ERROR] bot: API error in cycle: 401: {'error': {'code': 'ip_not_whitelisted_for_api_key', 'context': {'client_ip': '103.207.65.104'}}, 'success': False}
+2026-07-24 16:38:01,045 [INFO] bot: Candle 2026-07-24 11:08:00 | close=64986.00 ema_fast=64984.26 ema_slow=64969.59 rsi=54.5 atr=21.91
+2026-07-24 16:38:01,222 [ERROR] bot: API error in cycle: 401: {'error': {'code': 'ip_not_whitelisted_for_api_key', 'context': {'client_ip': '103.207.65.104'}}, 'success': False}
+2026-07-24 16:39:03,088 [INFO] bot: Candle 2026-07-24 11:09:00 | close=64977.00 ema_fast=64981.84 ema_slow=64970.65 rsi=52.0 atr=21.65
+2026-07-24 16:39:03,264 [ERROR] bot: API error in cycle: 401: {'error': {'code': 'ip_not_whitelisted_for_api_key', 'context': {'client_ip': '103.207.65.104'}}, 'success': False}
+2026-07-24 16:40:03,269 [INFO] bot: Candle 2026-07-24 11:10:00 | close=64951.00 ema_fast=64965.56 ema_slow=64964.54 rsi=46.0 atr=21.97
+2026-07-24 16:40:03,432 [ERROR] bot: API error in cycle: 401: {'error': {'code': 'ip_not_whitelisted_for_api_key', 'context': {'client_ip': '103.207.65.104'}}, 'success': False}
+2026-07-24 16:41:01,215 [INFO] bot: Candle 2026-07-24 11:11:00 | close=64961.00 ema_fast=64966.04 ema_slow=64965.13 rsi=48.5 atr=22.13
+2026-07-24 16:41:01,386 [ERROR] bot: API error in cycle: 401: {'error': {'code': 'ip_not_whitelisted_for_api_key', 'context': {'client_ip': '103.207.65.104'}}, 'success': False}
+2026-07-24 16:42:02,946 [INFO] bot: Candle 2026-07-24 11:12:00 | close=64974.00 ema_fast=64971.58 ema_slow=64967.99 rsi=51.6 atr=21.47
+2026-07-24 16:42:03,120 [ERROR] bot: API error in cycle: 401: {'error': {'code': 'ip_not_whitelisted_for_api_key', 'context': {'client_ip': '103.207.65.104'}}, 'success': False}
+2026-07-24 16:43:05,126 [INFO] bot: Candle 2026-07-24 11:13:00 | close=64989.50 ema_fast=64981.00 ema_slow=64972.96 rsi=55.0 atr=21.04
+2026-07-24 16:43:05,295 [ERROR] bot: API error in cycle: 401: {'error': {'code': 'ip_not_whitelisted_for_api_key', 'context': {'client_ip': '103.207.65.104'}}, 'success': False}
+2026-07-24 16:44:02,905 [INFO] bot: Candle 2026-07-24 11:14:00 | close=64995.00 ema_fast=64987.11 ema_slow=64976.91 rsi=56.1 atr=20.47
+2026-07-24 16:44:03,079 [ERROR] bot: API error in cycle: 401: {'error': {'code': 'ip_not_whitelisted_for_api_key', 'context': {'client_ip': '103.207.65.104'}}, 'success': False}
+2026-07-24 16:45:02,719 [INFO] bot: Candle 2026-07-24 11:15:00 | close=64974.50 ema_fast=64978.35 ema_slow=64974.05 rsi=50.8 atr=20.44
+2026-07-24 16:45:02,903 [ERROR] bot: API error in cycle: 401: {'error': {'code': 'ip_not_whitelisted_for_api_key', 'context': {'client_ip': '103.207.65.104'}}, 'success': False}
+2026-07-24 16:46:02,450 [INFO] bot: Candle 2026-07-24 11:16:00 | close=65020.50 ema_fast=65003.85 ema_slow=64986.99 rsi=59.5 atr=22.86
+2026-07-24 16:46:02,620 [ERROR] bot: API error in cycle: 401: {'error': {'code': 'ip_not_whitelisted_for_api_key', 'context': {'client_ip': '103.207.65.104'}}, 'success': False}
+2026-07-24 16:47:04,681 [INFO] bot: Candle 2026-07-24 11:17:00 | close=65012.50 ema_fast=65004.73 ema_slow=64989.54 rsi=57.5 atr=22.72
+2026-07-24 16:47:04,855 [ERROR] bot: API error in cycle: 401: {'error': {'code': 'ip_not_whitelisted_for_api_key', 'context': {'client_ip': '103.207.65.104'}}, 'success': False}
+2026-07-24 16:48:04,419 [INFO] bot: Candle 2026-07-24 11:18:00 | close=65020.00 ema_fast=65011.49 ema_slow=64994.81 rsi=58.8 atr=22.00
+2026-07-24 16:48:04,593 [ERROR] bot: API error in cycle: 401: {'error': {'code': 'ip_not_whitelisted_for_api_key', 'context': {'client_ip': '103.207.65.104'}}, 'success': False}
+2026-07-24 16:49:02,371 [INFO] bot: Candle 2026-07-24 11:19:00 | close=65021.00 ema_fast=65013.88 ema_slow=64998.12 rsi=58.8 atr=20.98
+2026-07-24 16:49:02,553 [ERROR] bot: API error in cycle: 401: {'error': {'code': 'ip_not_whitelisted_for_api_key', 'context': {'client_ip': '103.207.65.104'}}, 'success': False}
+2026-07-24 16:50:04,615 [INFO] bot: Candle 2026-07-24 11:20:00 | close=65011.50 ema_fast=65010.75 ema_slow=64998.75 rsi=56.5 atr=20.22
+2026-07-24 16:50:04,787 [ERROR] bot: API error in cycle: 401: {'error': {'code': 'ip_not_whitelisted_for_api_key', 'context': {'client_ip': '103.207.65.104'}}, 'success': False}
+2026-07-24 16:51:04,648 [INFO] bot: Candle 2026-07-24 11:21:00 | close=65011.50 ema_fast=65008.11 ema_slow=64998.98 rsi=56.0 atr=20.56
+2026-07-24 16:51:04,881 [ERROR] bot: API error in cycle: 401: {'error': {'code': 'ip_not_whitelisted_for_api_key', 'context': {'client_ip': '103.207.65.104'}}, 'success': False}
+2026-07-24 16:52:04,537 [INFO] bot: Candle 2026-07-24 11:22:00 | close=65014.00 ema_fast=65010.63 ema_slow=65001.43 rsi=56.5 atr=19.92
+2026-07-24 16:52:04,708 [ERROR] bot: API error in cycle: 401: {'error': {'code': 'ip_not_whitelisted_for_api_key', 'context': {'client_ip': '103.207.65.104'}}, 'success': False}
+2026-07-24 16:53:02,259 [INFO] bot: Candle 2026-07-24 11:23:00 | close=65017.00 ema_fast=65013.42 ema_slow=65004.02 rsi=57.2 atr=18.76
+2026-07-24 16:53:02,433 [ERROR] bot: API error in cycle: 401: {'error': {'code': 'ip_not_whitelisted_for_api_key', 'context': {'client_ip': '103.207.65.104'}}, 'success': False}
+2026-07-24 16:54:06,871 [INFO] bot: Candle 2026-07-24 11:24:00 | close=65012.50 ema_fast=65012.34 ema_slow=65004.80 rsi=55.8 atr=18.79
+2026-07-24 16:54:07,047 [ERROR] bot: API error in cycle: 401: {'error': {'code': 'ip_not_whitelisted_for_api_key', 'context': {'client_ip': '103.207.65.104'}}, 'success': False}
+2026-07-24 16:55:02,401 [INFO] bot: Candle 2026-07-24 11:25:00 | close=65018.00 ema_fast=65015.67 ema_slow=65007.48 rsi=57.1 atr=17.88
+2026-07-24 16:55:02,567 [ERROR] bot: API error in cycle: 401: {'error': {'code': 'ip_not_whitelisted_for_api_key', 'context': {'client_ip': '103.207.65.104'}}, 'success': False}
+2026-07-24 16:56:01,984 [INFO] bot: Candle 2026-07-24 11:26:00 | close=65002.00 ema_fast=65007.56 ema_slow=65004.74 rsi=52.2 atr=18.14
+2026-07-24 16:56:02,170 [ERROR] bot: API error in cycle: 401: {'error': {'code': 'ip_not_whitelisted_for_api_key', 'context': {'client_ip': '103.207.65.104'}}, 'success': False}
+2026-07-24 16:57:03,885 [INFO] bot: Candle 2026-07-24 11:27:00 | close=65019.50 ema_fast=65015.43 ema_slow=65008.99 rsi=56.6 atr=17.94
+2026-07-24 16:57:04,064 [ERROR] bot: API error in cycle: 401: {'error': {'code': 'ip_not_whitelisted_for_api_key', 'context': {'client_ip': '103.207.65.104'}}, 'success': False}
+2026-07-24 16:58:04,014 [INFO] bot: Candle 2026-07-24 11:28:00 | close=65034.00 ema_fast=65024.84 ema_slow=65014.34 rsi=59.9 atr=18.64
+2026-07-24 16:58:04,181 [ERROR] bot: API error in cycle: 401: {'error': {'code': 'ip_not_whitelisted_for_api_key', 'context': {'client_ip': '103.207.65.104'}}, 'success': False}
+2026-07-24 16:59:03,464 [INFO] bot: Candle 2026-07-24 11:29:00 | close=65027.50 ema_fast=65024.06 ema_slow=65015.30 rsi=57.7 atr=17.88
+2026-07-24 16:59:03,636 [ERROR] bot: API error in cycle: 401: {'error': {'code': 'ip_not_whitelisted_for_api_key', 'context': {'client_ip': '103.207.65.104'}}, 'success': False}
+2026-07-24 17:00:03,375 [INFO] bot: Candle 2026-07-24 11:30:00 | close=65004.50 ema_fast=65012.43 ema_slow=65010.94 rsi=50.9 atr=18.43
+2026-07-24 17:00:03,564 [ERROR] bot: API error in cycle: 401: {'error': {'code': 'ip_not_whitelisted_for_api_key', 'context': {'client_ip': '103.207.65.104'}}, 'success': False}
+2026-07-24 17:01:03,349 [INFO] bot: Candle 2026-07-24 11:31:00 | close=64996.00 ema_fast=65005.06 ema_slow=65007.77 rsi=48.6 atr=18.58
+2026-07-24 17:01:03,528 [ERROR] bot: API error in cycle: 401: {'error': {'code': 'ip_not_whitelisted_for_api_key', 'context': {'client_ip': '103.207.65.104'}}, 'success': False}
+2026-07-24 17:02:05,547 [INFO] bot: Candle 2026-07-24 11:32:00 | close=64972.00 ema_fast=64991.71 ema_slow=65001.37 rsi=42.5 atr=20.64
+2026-07-24 17:02:05,724 [ERROR] bot: API error in cycle: 401: {'error': {'code': 'ip_not_whitelisted_for_api_key', 'context': {'client_ip': '103.207.65.104'}}, 'success': False}
+2026-07-24 17:03:01,217 [INFO] bot: Candle 2026-07-24 11:33:00 | close=65002.00 ema_fast=65001.03 ema_slow=65004.71 rsi=50.7 atr=22.66
+2026-07-24 17:03:01,390 [ERROR] bot: API error in cycle: 401: {'error': {'code': 'ip_not_whitelisted_for_api_key', 'context': {'client_ip': '103.207.65.104'}}, 'success': False}
+2026-07-24 17:04:05,211 [INFO] bot: Candle 2026-07-24 11:34:00 | close=64999.50 ema_fast=64998.74 ema_slow=65002.98 rsi=50.1 atr=23.96
+2026-07-24 17:04:05,381 [ERROR] bot: API error in cycle: 401: {'error': {'code': 'ip_not_whitelisted_for_api_key', 'context': {'client_ip': '103.207.65.104'}}, 'success': False}
+2026-07-24 17:05:03,049 [INFO] bot: Candle 2026-07-24 11:35:00 | close=64960.00 ema_fast=64977.16 ema_slow=64992.07 rsi=40.0 atr=25.50
+2026-07-24 17:05:03,232 [ERROR] bot: API error in cycle: 401: {'error': {'code': 'ip_not_whitelisted_for_api_key', 'context': {'client_ip': '103.207.65.104'}}, 'success': False}
+2026-07-24 17:06:03,004 [INFO] bot: Candle 2026-07-24 11:36:00 | close=64949.00 ema_fast=64965.11 ema_slow=64984.45 rsi=37.9 atr=24.95
+2026-07-24 17:06:03,170 [ERROR] bot: API error in cycle: 401: {'error': {'code': 'ip_not_whitelisted_for_api_key', 'context': {'client_ip': '103.207.65.104'}}, 'success': False}
+2026-07-24 17:07:02,675 [INFO] bot: Candle 2026-07-24 11:37:00 | close=64965.50 ema_fast=64967.02 ema_slow=64982.72 rsi=43.3 atr=26.06
+2026-07-24 17:07:02,843 [ERROR] bot: API error in cycle: 401: {'error': {'code': 'ip_not_whitelisted_for_api_key', 'context': {'client_ip': '103.207.65.104'}}, 'success': False}
+2026-07-24 17:08:04,757 [INFO] bot: Candle 2026-07-24 11:38:00 | close=64954.50 ema_fast=64960.18 ema_slow=64977.22 rsi=40.1 atr=25.50
+2026-07-24 17:08:04,961 [ERROR] bot: API error in cycle: 401: {'error': {'code': 'ip_not_whitelisted_for_api_key', 'context': {'client_ip': '103.207.65.104'}}, 'success': False}
+2026-07-24 17:09:02,552 [INFO] bot: Candle 2026-07-24 11:39:00 | close=64970.00 ema_fast=64967.12 ema_slow=64978.21 rsi=45.2 atr=25.01
+2026-07-24 17:09:02,722 [ERROR] bot: API error in cycle: 401: {'error': {'code': 'ip_not_whitelisted_for_api_key', 'context': {'client_ip': '103.207.65.104'}}, 'success': False}
+2026-07-24 17:10:02,668 [INFO] bot: Candle 2026-07-24 11:40:00 | close=64981.50 ema_fast=64975.58 ema_slow=64980.70 rsi=48.6 atr=25.70
+2026-07-24 17:10:02,849 [ERROR] bot: API error in cycle: 401: {'error': {'code': 'ip_not_whitelisted_for_api_key', 'context': {'client_ip': '103.207.65.104'}}, 'success': False}
+2026-07-24 17:11:03,047 [INFO] bot: Candle 2026-07-24 11:41:00 | close=64960.50 ema_fast=64965.89 ema_slow=64975.24 rsi=43.5 atr=25.26
+2026-07-24 17:11:03,218 [ERROR] bot: API error in cycle: 401: {'error': {'code': 'ip_not_whitelisted_for_api_key', 'context': {'client_ip': '103.207.65.104'}}, 'success': False}
+2026-07-24 17:12:07,514 [INFO] bot: Candle 2026-07-24 11:42:00 | close=64963.00 ema_fast=64965.70 ema_slow=64973.92 rsi=44.3 atr=24.32
+2026-07-24 17:12:07,689 [ERROR] bot: API error in cycle: 401: {'error': {'code': 'ip_not_whitelisted_for_api_key', 'context': {'client_ip': '103.207.65.104'}}, 'success': False}
+2026-07-24 17:13:03,117 [INFO] bot: Candle 2026-07-24 11:43:00 | close=64946.50 ema_fast=64955.63 ema_slow=64967.98 rsi=40.5 atr=23.81
+2026-07-24 17:13:03,290 [ERROR] bot: API error in cycle: 401: {'error': {'code': 'ip_not_whitelisted_for_api_key', 'context': {'client_ip': '103.207.65.104'}}, 'success': False}

@@ -256,3 +256,27 @@ class DeltaClient:
         """Market order in the opposite direction, reduce_only=True."""
         close_side = "sell" if side == "buy" else "buy"
         return self.place_market_order(product_id, close_side, size, reduce_only=True)
+
+    def replace_stop_loss(
+        self,
+        product_id,
+        product_symbol,
+        side,
+        size,
+        new_stop_price,
+        far_take_profit_price,
+        trigger_method="last_traded_price",
+    ):
+        """
+        Used for trailing-stop updates on an already-open position: cancels
+        the existing bracket (old fixed SL/TP) and places a fresh one with
+        an updated stop-loss. Delta's bracket endpoint requires both a
+        stop_loss_order and a take_profit_order, so a deliberately distant
+        take-profit price is passed in to keep the TP effectively out of
+        the way while the trailing stop does the real exit management.
+        """
+        self.cancel_all_orders(product_id)
+        return self.place_bracket_order(
+            product_id, product_symbol, side, size,
+            new_stop_price, far_take_profit_price, trigger_method,
+        )
