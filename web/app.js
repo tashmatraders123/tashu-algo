@@ -26,6 +26,10 @@
   const positionDetails = $('position-details');
   const floatBalance = $('float-balance');
   const floatPnl = $('float-pnl');
+  const tradesTableWrap = $('trades-table-wrap');
+  const btnExportTrades = $('btn-export-trades');
+
+  let previousPrices = {};
 
   let hadApiKeys = false;
   let wasInPosition = false;
@@ -154,7 +158,17 @@
       const data = await res.json();
       if (!data.ok || !data.tickers || !data.tickers.length) return;
       const itemsHtml = data.tickers
-        .map(t => `<span class="ticker-item"><span class="sym">${t.symbol}</span>${Number(t.price).toLocaleString(undefined, {maximumFractionDigits: 2})}</span>`)
+        .map(t => {
+          const price = Number(t.price);
+          const prev = previousPrices[t.symbol];
+          let flashClass = '';
+          if (prev != null) {
+            if (price > prev) flashClass = 'flash-up';
+            else if (price < prev) flashClass = 'flash-down';
+          }
+          previousPrices[t.symbol] = price;
+          return `<span class="ticker-item ${flashClass}"><span class="sym">${t.symbol}</span>${price.toLocaleString(undefined, {maximumFractionDigits: 2})}</span>`;
+        })
         .join('');
       // Duplicated once for a seamless CSS marquee loop.
       tickerTrack.innerHTML = itemsHtml + itemsHtml;
@@ -246,10 +260,64 @@
     } catch (e) { /* network hiccup, try again next tick */ }
   }
 
+  // ------------------------------------------------------------
+  // Recent trades table + Excel export
+  // ------------------------------------------------------------
+  function renderTrades(trades) {
+    if (!tradesTableWrap) return;
+    if (!trades || !trades.length) {
+      tradesTableWrap.innerHTML = '<div class="empty-state">No closed trades yet.</div>';
+      return;
+    }
+    const rows = trades.map(t => {
+      const side = (t.direction || '').toLowerCase();
+      const sideLabel = side === 'long' ? 'Long' : side === 'short' ? 'Short' : '—';
+      const pnl = t.realized_pnl_estimate;
+      const pnlClass = pnl == null ? '' : (pnl >= 0 ? 'pos' : 'neg');
+      const closedAt = t.closed_at ? new Date(t.closed_at * 1000).toLocaleString() : '—';
+      const reasonLabel = t.close_reason === 'bot_1_1' ? '1:1 exit' : t.close_reason === 'external' ? 'SL/TP or manual' : (t.close_reason || '—');
+      return `
+        <tr>
+          <td>${closedAt}</td>
+          <td><span class="side-tag ${side}">${sideLabel}</span></td>
+          <td>${t.entry_price != null ? Number(t.entry_price).toFixed(2) : '—'}</td>
+          <td>${t.exit_price != null ? Number(t.exit_price).toFixed(2) : '—'}</td>
+          <td>${t.size != null ? t.size : '—'}</td>
+          <td>${reasonLabel}</td>
+          <td class="${pnlClass}">${fmtMoney(pnl)}</td>
+        </tr>
+      `;
+    }).join('');
+    tradesTableWrap.innerHTML = `
+      <table class="trades-table">
+        <thead><tr><th>Closed</th><th>Side</th><th>Entry</th><th>Exit</th><th>Size</th><th>Reason</th><th>P&amp;L</th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+    `;
+  }
+
+  async function refreshTrades() {
+    if (!tradesTableWrap) return;
+    try {
+      const res = await fetch('/api/trades');
+      if (!res.ok) return;
+      const data = await res.json();
+      if (data.ok) renderTrades(data.trades);
+    } catch (e) { /* network hiccup, try again next tick */ }
+  }
+
+  if (btnExportTrades) {
+    btnExportTrades.addEventListener('click', () => {
+      window.location.href = '/api/trades/export';
+    });
+  }
+
   refreshStatus();
   refreshTicker();
   refreshPosition();
+  refreshTrades();
   setInterval(refreshStatus, 3000);
   setInterval(refreshTicker, 6000);
   setInterval(refreshPosition, 3000);
+  setInterval(refreshTrades, 8000);
 })();

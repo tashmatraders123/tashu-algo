@@ -215,7 +215,7 @@ class ScalpingBot:
                         "current_atr=%.2f) -- closing full position at market.",
                         r, trade["entry_atr"], current_atr,
                     )
-                    self._close_full_position(trade)
+                    self._close_full_position(trade, current_price, "bot_1_1")
                     return
                 else:
                     trail_mult = getattr(config, "TRAIL_ATR_MULT", 1.5)
@@ -280,7 +280,52 @@ class ScalpingBot:
             return trade["entry_price"] + far_dist
         return trade["entry_price"] - far_dist
 
-    def _close_full_position(self, trade):
+    def _record_trade_history(self, trade, exit_price, close_reason):
+        """
+        Appends a closed trade to trade_history.json (same per-user
+        directory as position_state.json) for the dashboard's Recent
+        Trades panel and Excel export. Best-effort: never lets a write
+        failure interrupt trading. realized_pnl_estimate is exactly that
+        -- an estimate from entry/exit price and contract_value, not a
+        substitute for Delta's own settled P&L.
+        """
+        try:
+            realized_pnl = None
+            if exit_price is not None:
+                direction_sign = 1 if trade["direction"] == "long" else -1
+                price_diff = (exit_price - trade["entry_price"]) * direction_sign
+                realized_pnl = price_diff * abs(trade["size"]) * self.contract_value
+
+            record = {
+                "symbol": config.SYMBOL,
+                "direction": trade["direction"],
+                "entry_price": trade["entry_price"],
+                "exit_price": exit_price,
+                "size": trade["size"],
+                "stage_at_close": trade.get("stage"),
+                "close_reason": close_reason,
+                "opened_at": trade.get("opened_at"),
+                "closed_at": int(time.time()),
+                "realized_pnl_estimate": realized_pnl,
+            }
+
+            history_dir = os.path.dirname(POSITION_STATE_PATH) or "."
+            history_path = os.path.join(history_dir, "trade_history.json")
+            history = []
+            if os.path.exists(history_path):
+                try:
+                    with open(history_path, "r", encoding="utf-8") as f:
+                        history = json.load(f)
+                except (json.JSONDecodeError, OSError):
+                    history = []
+            history.append(record)
+            history = history[-500:]  # cap file size, keep most recent
+            with open(history_path, "w", encoding="utf-8") as f:
+                json.dump(history, f)
+        except OSError as e:
+            log.warning("Could not write trade history: %s", e)
+
+    def _close_full_position(self, trade, exit_price, close_reason):
         if not config.DRY_RUN:
             try:
                 self.trade_client.cancel_all_orders(self.product_id)
@@ -290,6 +335,7 @@ class ScalpingBot:
             except DeltaAPIError as e:
                 log.error("Failed to close position at 1:1: %s", e)
                 return
+        self._record_trade_history(trade, exit_price, close_reason)
         self.open_trade = None
         self._persist_position_state()
 
@@ -327,6 +373,11 @@ class ScalpingBot:
             still_open = any(float(p.get("size", 0) or 0) != 0 for p in positions)
             if not still_open:
                 log.info("POSITION_CLOSED_EXTERNAL: no longer open on exchange (closed via SL/TP fill, or closed manually on Delta). Clearing tracked state.")
+                try:
+                    exit_price = float(self.trade_client.get_ticker(config.SYMBOL)["close"])
+                except DeltaAPIError:
+                    exit_price = None
+                self._record_trade_history(self.open_trade, exit_price, "external")
                 self.open_trade = None
                 self._persist_position_state()
 

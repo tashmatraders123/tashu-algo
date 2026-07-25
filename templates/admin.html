@@ -21,6 +21,13 @@
 
 <div class="dash" style="grid-template-columns: 1fr;">
   <div class="panel">
+    <div class="btn-row">
+      <a href="{{ url_for('admin_logs_page') }}" class="btn btn-ghost">View All User Logs</a>
+      <a href="{{ url_for('admin_trades_export_all') }}" class="btn btn-ghost">Export All Trades to Excel</a>
+    </div>
+  </div>
+
+  <div class="panel">
     <div class="panel-title">Pending Approval</div>
     <table class="simple">
       <thead><tr><th>Username</th><th style="width:1%;"></th></tr></thead>

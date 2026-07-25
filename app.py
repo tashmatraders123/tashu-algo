@@ -9,6 +9,7 @@ group of people you personally trust with the link to this site --
 anyone who can reach it can create an account. Do not publicize the URL
 widely without adding stronger access control first.
 """
+import io
 import json
 import os
 import secrets
@@ -18,7 +19,7 @@ import threading
 import time
 from functools import wraps
 
-from flask import Flask, jsonify, request, session, redirect, url_for, render_template
+from flask import Flask, jsonify, request, session, redirect, url_for, render_template, send_file
 
 import config
 import users
@@ -30,7 +31,7 @@ SECRET_KEY_PATH = os.path.join(BASE_DIR, "secret.key")
 
 COMMON_SYMBOLS = [
     "BTCUSD", "ETHUSD", "SOLUSD", "XRPUSD", "DOGEUSD",
-    "ADAUSD", "MATICUSD", "LTCUSD", "BNBUSD", "AVAXUSD",
+    "ADAUSD", "POLUSD", "LTCUSD", "BNBUSD", "AVAXUSD",
 ]
 
 app = Flask(
@@ -399,7 +400,11 @@ def api_market_ticker():
             {"symbol": t.get("symbol"), "price": t.get("close")}
             for t in tickers if t.get("close") is not None
         ]
-        return jsonify({"ok": True, "tickers": out})
+        matched = {t["symbol"] for t in out}
+        missing = [s for s in COMMON_SYMBOLS if s not in matched]
+        if missing:
+            app.logger.warning("Ticker symbols not found on Delta: %s", missing)
+        return jsonify({"ok": True, "tickers": out, "fetched_at": int(time.time()), "missing": missing})
     except DeltaAPIError as e:
         return jsonify({"ok": False, "error": str(e)})
     except Exception as e:
@@ -407,8 +412,177 @@ def api_market_ticker():
 
 
 # ----------------------------------------------------------------------
-# API: logs (per-user, polling-based tail)
+# API: trade history + Excel export
 # ----------------------------------------------------------------------
+def _read_trade_history(username):
+    path = os.path.join(users.user_dir(username), "trade_history.json")
+    if not os.path.exists(path):
+        return []
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            return json.load(f)
+    except (json.JSONDecodeError, OSError):
+        return []
+
+
+@app.route("/api/trades")
+@login_required
+def api_trades():
+    username = session["username"]
+    history = _read_trade_history(username)
+    # Most recent first, capped for the dashboard panel (export gets everything).
+    recent = list(reversed(history))[:25]
+    return jsonify({"ok": True, "trades": recent})
+
+
+def _build_trade_history_workbook(rows_by_user):
+    """
+    rows_by_user: dict of username -> list of trade dicts (as recorded by
+    the bot). Builds an .xlsx in memory with one sheet per user plus a
+    combined "All Trades" summary sheet with a totals row using a real
+    SUM formula (not a hardcoded number) so it recalculates if edited.
+    """
+    import openpyxl
+    from openpyxl.styles import Font, Alignment
+    from openpyxl.utils import get_column_letter
+
+    HEADER_FONT = Font(name="Arial", bold=True, color="FFFFFF")
+    HEADER_FILL_COLOR = "1F2430"
+    BODY_FONT = Font(name="Arial")
+    CURRENCY_FMT = '$#,##0.00;($#,##0.00);-'
+
+    columns = [
+        ("Closed At", "closed_at"), ("Opened At", "opened_at"), ("Symbol", "symbol"),
+        ("Direction", "direction"), ("Entry Price", "entry_price"), ("Exit Price", "exit_price"),
+        ("Size", "size"), ("Stage at Close", "stage_at_close"), ("Close Reason", "close_reason"),
+        ("Realized P&L (est.)", "realized_pnl_estimate"),
+    ]
+
+    def fmt_ts(ts):
+        if ts is None:
+            return None
+        try:
+            from datetime import datetime
+            return datetime.utcfromtimestamp(int(ts)).strftime("%Y-%m-%d %H:%M:%S UTC")
+        except (ValueError, TypeError):
+            return None
+
+    def write_sheet(ws, rows):
+        for col_idx, (label, _) in enumerate(columns, start=1):
+            cell = ws.cell(row=1, column=col_idx, value=label)
+            cell.font = HEADER_FONT
+            cell.fill = openpyxl.styles.PatternFill("solid", fgColor=HEADER_FILL_COLOR)
+            cell.alignment = Alignment(horizontal="center")
+        r = 2
+        pnl_col = None
+        for col_idx, (label, key) in enumerate(columns, start=1):
+            if key == "realized_pnl_estimate":
+                pnl_col = get_column_letter(col_idx)
+        for row in rows:
+            for col_idx, (label, key) in enumerate(columns, start=1):
+                value = row.get(key)
+                if key in ("closed_at", "opened_at"):
+                    value = fmt_ts(value)
+                cell = ws.cell(row=r, column=col_idx, value=value)
+                cell.font = BODY_FONT
+                if key == "realized_pnl_estimate" and value is not None:
+                    cell.number_format = CURRENCY_FMT
+            r += 1
+        if rows and pnl_col:
+            total_row = r
+            ws.cell(row=total_row, column=1, value="TOTAL").font = Font(name="Arial", bold=True)
+            total_cell = ws.cell(row=total_row, column=columns.index(("Realized P&L (est.)", "realized_pnl_estimate")) + 1)
+            total_cell.value = f"=SUM({pnl_col}2:{pnl_col}{r - 1})"
+            total_cell.font = Font(name="Arial", bold=True)
+            total_cell.number_format = CURRENCY_FMT
+        for col_idx, (label, _) in enumerate(columns, start=1):
+            ws.column_dimensions[get_column_letter(col_idx)].width = max(14, len(label) + 2)
+
+    wb = openpyxl.Workbook()
+    all_ws = wb.active
+    all_ws.title = "All Trades"
+    all_rows = []
+    for uname, rows in rows_by_user.items():
+        for row in rows:
+            all_rows.append(dict(row, username=uname))
+    all_rows.sort(key=lambda r: r.get("closed_at") or 0)
+    write_sheet(all_ws, all_rows)
+
+    for uname, rows in rows_by_user.items():
+        rows_sorted = sorted(rows, key=lambda r: r.get("closed_at") or 0)
+        sheet_name = uname[:31] or "user"  # Excel sheet name length limit
+        ws = wb.create_sheet(title=sheet_name)
+        write_sheet(ws, rows_sorted)
+
+    buf = io.BytesIO()
+    wb.save(buf)
+    buf.seek(0)
+    return buf
+
+
+@app.route("/api/trades/export")
+@login_required
+def api_trades_export():
+    """Exports the logged-in user's own trade history as an .xlsx."""
+    username = session["username"]
+    history = _read_trade_history(username)
+    buf = _build_trade_history_workbook({username: history})
+    return send_file(
+        buf, as_attachment=True,
+        download_name=f"aurelius-algo-trades-{username}.xlsx",
+        mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    )
+
+
+@app.route("/admin/trades/export-all")
+@admin_required
+def admin_trades_export_all():
+    """Exports every user's trade history into one workbook, one sheet
+    per user plus a combined summary sheet -- for oversight of everyone
+    using the algo."""
+    rows_by_user = {}
+    for uname, _ in users.list_all_users():
+        rows_by_user[uname] = _read_trade_history(uname)
+    buf = _build_trade_history_workbook(rows_by_user)
+    return send_file(
+        buf, as_attachment=True,
+        download_name="aurelius-algo-all-trades.xlsx",
+        mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    )
+
+
+# ----------------------------------------------------------------------
+# Admin: logs across all users (touch-friendly viewer)
+# ----------------------------------------------------------------------
+@app.route("/admin/logs")
+@admin_required
+def admin_logs_page():
+    all_usernames = [u for u, _ in users.list_all_users()]
+    return render_template(
+        "admin_logs.html", username=session["username"], all_usernames=all_usernames,
+    )
+
+
+@app.route("/admin/api/logs/<target_username>")
+@admin_required
+def admin_api_logs(target_username):
+    target_username = target_username.strip().lower()
+    if not users.user_exists(target_username):
+        return jsonify({"ok": False, "error": "No such user"}), 404
+    paths = user_paths(target_username)
+    since = request.args.get("since", default=0, type=int)
+    log_path = paths["log"]
+    if not os.path.exists(log_path):
+        return jsonify({"ok": True, "lines": [], "offset": 0})
+    size = os.path.getsize(log_path)
+    if since > size:
+        since = 0
+    with open(log_path, "r", encoding="utf-8", errors="replace") as f:
+        f.seek(since)
+        data = f.read()
+        new_offset = f.tell()
+    lines = data.splitlines() if data else []
+    return jsonify({"ok": True, "lines": lines, "offset": new_offset})
 @app.route("/api/logs")
 @login_required
 def api_logs():

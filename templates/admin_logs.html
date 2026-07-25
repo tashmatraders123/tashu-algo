@@ -1,0 +1,113 @@
+{% extends "base.html" %}
+{% block title %}All User Logs — Aurelius Algo{% endblock %}
+{% block body %}
+
+<nav class="topnav">
+  <div class="brand">
+    {{ coin_glyph(28) }}
+    <span class="wordmark" style="font-size:17px;">Aurelius<span> Algo</span></span>
+  </div>
+  <div class="nav-right">
+    <span class="user">{{ username }}</span>
+    <a href="{{ url_for('admin_page') }}">Admin</a>
+    <a href="{{ url_for('dashboard') }}">Dashboard</a>
+    <a href="{{ url_for('logout') }}">Log out</a>
+  </div>
+</nav>
+
+<div class="page-header">
+  <h1>All User Logs</h1>
+  <p>Tap a user to watch their bot's live log — errors and warnings are highlighted.</p>
+</div>
+
+<div class="dash" style="grid-template-columns: 1fr;">
+  <div class="panel">
+    <div class="user-tab-row" id="user-tab-row">
+      {% for u in all_usernames %}
+      <button class="user-tab" data-username="{{ u }}">{{ u }}</button>
+      {% else %}
+      <span class="hint">No users yet.</span>
+      {% endfor %}
+    </div>
+
+    <div class="panel-title" style="margin-top:20px;">
+      <span id="selected-user-label">Select a user above</span>
+      <span class="tools">
+        <label><input type="checkbox" id="admin-auto-scroll" checked> Auto-scroll</label>
+        <button id="btn-admin-clear-log" class="btn btn-ghost btn-sm">Clear view</button>
+      </span>
+    </div>
+    <div id="admin-log-console" class="log-console">
+      <div class="empty">Select a user to view their log.</div>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function () {
+  const tabRow = document.getElementById('user-tab-row');
+  const logConsole = document.getElementById('admin-log-console');
+  const selectedLabel = document.getElementById('selected-user-label');
+  const autoScroll = document.getElementById('admin-auto-scroll');
+  const btnClear = document.getElementById('btn-admin-clear-log');
+
+  if (!tabRow) return;
+
+  let currentUser = null;
+  let logOffset = 0;
+  let pollTimer = null;
+
+  function classify(line) {
+    if (line.includes('[ERROR]')) return 'error';
+    if (line.includes('[WARNING]')) return 'warning';
+    return 'info';
+  }
+
+  function selectUser(username, btn) {
+    currentUser = username;
+    logOffset = 0;
+    selectedLabel.textContent = username;
+    logConsole.innerHTML = '<div class="empty">Loading&hellip;</div>';
+    document.querySelectorAll('.user-tab').forEach(b => b.classList.remove('active'));
+    if (btn) btn.classList.add('active');
+    if (pollTimer) clearInterval(pollTimer);
+    poll();
+    pollTimer = setInterval(poll, 2000);
+  }
+
+  async function poll() {
+    if (!currentUser) return;
+    try {
+      const res = await fetch(`/admin/api/logs/${encodeURIComponent(currentUser)}?since=${logOffset}`);
+      if (!res.ok) return;
+      const data = await res.json();
+      if (!data.ok) return;
+      logOffset = data.offset;
+      if (!data.lines || !data.lines.length) return;
+      if (logConsole.querySelector('.empty')) logConsole.innerHTML = '';
+      const atBottom = logConsole.scrollTop + logConsole.clientHeight >= logConsole.scrollHeight - 20;
+      for (const line of data.lines) {
+        const div = document.createElement('div');
+        div.className = 'line ' + classify(line);
+        div.textContent = line;
+        logConsole.appendChild(div);
+      }
+      if (autoScroll.checked && atBottom) logConsole.scrollTop = logConsole.scrollHeight;
+    } catch (e) { /* network hiccup, try again next tick */ }
+  }
+
+  tabRow.querySelectorAll('.user-tab').forEach(btn => {
+    btn.addEventListener('click', () => selectUser(btn.dataset.username, btn));
+    // Touch-friendly: tap also fires click on mobile Safari/Chrome by default,
+    // no extra handling needed, but keep target sizing generous via CSS.
+  });
+
+  btnClear.addEventListener('click', () => {
+    logConsole.innerHTML = '<div class="empty">Cleared — new lines will appear here.</div>';
+  });
+})();
+</script>
+{% endblock %}
