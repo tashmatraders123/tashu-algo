@@ -69,6 +69,10 @@ def create_user(username, password):
             # them before they can log in.
             "is_admin": is_first_user,
             "approved": is_first_user,
+            # Separate from "approved": an approved account can later be
+            # suspended (access revoked) and unsuspended (access restored)
+            # without deleting it or losing its settings/API keys.
+            "suspended": False,
         }
         _save(users)
     os.makedirs(os.path.join(USER_DATA_DIR, username), exist_ok=True)
@@ -77,7 +81,8 @@ def create_user(username, password):
 
 def verify_login(username, password):
     """Returns (ok, reason). reason is None on success, or a short string
-    explaining why login was refused ('bad_credentials' / 'pending')."""
+    explaining why login was refused ('bad_credentials' / 'pending' /
+    'suspended')."""
     users = _load()
     username = username.strip().lower()
     user = users.get(username)
@@ -85,6 +90,8 @@ def verify_login(username, password):
         return False, "bad_credentials"
     if not user.get("approved", False):
         return False, "pending"
+    if user.get("suspended", False):
+        return False, "suspended"
     return True, None
 
 
@@ -111,6 +118,41 @@ def approve_user(username):
         if username not in users:
             return False
         users[username]["approved"] = True
+        _save(users)
+    return True
+
+
+def is_suspended(username):
+    users = _load()
+    user = users.get(username.strip().lower())
+    return bool(user and user.get("suspended", False))
+
+
+def suspend_user(username):
+    """
+    Revokes an already-approved user's access without deleting their
+    account, settings, or API keys -- they can be unsuspended later.
+    Refuses to suspend an admin account.
+    """
+    username = username.strip().lower()
+    with _lock:
+        users = _load()
+        if username not in users:
+            return False
+        if users[username].get("is_admin", False):
+            return False
+        users[username]["suspended"] = True
+        _save(users)
+    return True
+
+
+def unsuspend_user(username):
+    username = username.strip().lower()
+    with _lock:
+        users = _load()
+        if username not in users:
+            return False
+        users[username]["suspended"] = False
         _save(users)
     return True
 

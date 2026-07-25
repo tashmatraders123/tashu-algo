@@ -454,3 +454,59 @@ table.simple .empty-row td { color: var(--text-faint); font-style: italic; text-
   letter-spacing: 0.02em; margin: 0 0 4px;
 }
 .page-header p { color: var(--text-dim); font-size: 13.5px; margin: 0; }
+
+/* ------------------------------------------------------------
+   Trade event toasts
+   ------------------------------------------------------------ */
+.toast-stack {
+  position: fixed;
+  top: 84px;
+  right: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  z-index: 50;
+  max-width: 340px;
+}
+
+.toast {
+  padding: 14px 16px;
+  border-radius: var(--radius-sm);
+  background: var(--bg-elev);
+  border: 1px solid var(--glass-border);
+  backdrop-filter: blur(16px);
+  box-shadow: var(--shadow-panel);
+  animation: toast-in 0.35s var(--ease) both;
+  font-size: 13.5px;
+}
+
+.toast .toast-title {
+  font-weight: 600;
+  font-size: 12px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  margin-bottom: 4px;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.toast .toast-body { color: var(--text-dim); line-height: 1.5; }
+
+.toast.long { border-left: 3px solid var(--teal); }
+.toast.long .toast-title { color: var(--teal); }
+.toast.short { border-left: 3px solid var(--red); }
+.toast.short .toast-title { color: #ff8a8f; }
+.toast.closed { border-left: 3px solid var(--gold); }
+.toast.closed .toast-title { color: var(--gold-bright); }
+
+.toast.leaving { animation: toast-out 0.3s var(--ease) forwards; }
+
+@keyframes toast-in {
+  from { opacity: 0; transform: translateX(24px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+@keyframes toast-out {
+  from { opacity: 1; transform: translateX(0); }
+  to { opacity: 0; transform: translateX(24px); }
+}

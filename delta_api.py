@@ -252,6 +252,72 @@ class DeltaClient:
         body = {"product_id": product_id}
         return self._request("DELETE", "/v2/orders/all", body=body, auth=True)
 
+    def wait_for_position(self, product_id, retries=5, delay=1.0):
+        """
+        Polls until a non-zero-size position appears for product_id.
+        Returns the raw position dict (includes entry_price, size, etc.)
+        on success, or None if it doesn't show up in time.
+        """
+        for _ in range(retries):
+            time.sleep(delay)
+            positions = self.get_positions(product_id)
+            if isinstance(positions, dict):
+                positions = [positions]
+            for p in positions:
+                if float(p.get("size", 0) or 0) != 0:
+                    return p
+        return None
+
+    def place_bracket_order_safe(
+        self,
+        product_id,
+        product_symbol,
+        side,
+        size,
+        sl_price,
+        tp_price,
+        direction,
+        trigger_method="last_traded_price",
+        max_retries=3,
+        widen_pct=0.15,
+    ):
+        """
+        Same as place_bracket_order, but recovers from Delta's
+        'bracket_order_immediate_execution' rejection -- which happens
+        when the current price has moved past the SL or TP level between
+        when it was calculated and when the bracket is actually placed
+        (common when testnet/demo price feeds lag or jump). On that
+        specific error, nudges both levels further from the live price
+        and retries, up to max_retries times.
+        """
+        attempt = 0
+        while True:
+            try:
+                return self.place_bracket_order(
+                    product_id, product_symbol, side, size, sl_price, tp_price, trigger_method,
+                )
+            except DeltaAPIError as e:
+                if "bracket_order_immediate_execution" not in str(e) or attempt >= max_retries:
+                    raise
+                attempt += 1
+                try:
+                    current_price = float(self.get_ticker(product_symbol)["close"])
+                except DeltaAPIError:
+                    current_price = sl_price
+                widen = current_price * (widen_pct / 100.0)
+                if direction == "long":
+                    sl_price -= widen
+                    tp_price += widen
+                else:
+                    sl_price += widen
+                    tp_price -= widen
+                log.warning(
+                    "Bracket rejected as immediate-execution, widening and retrying "
+                    "(attempt %s/%s): sl=%.2f tp=%.2f",
+                    attempt, max_retries, sl_price, tp_price,
+                )
+                time.sleep(0.5)
+
     def close_position(self, product_id, symbol, side, size):
         """Market order in the opposite direction, reduce_only=True."""
         close_side = "sell" if side == "buy" else "buy"
@@ -265,6 +331,7 @@ class DeltaClient:
         size,
         new_stop_price,
         far_take_profit_price,
+        direction,
         trigger_method="last_traded_price",
     ):
         """
@@ -274,9 +341,11 @@ class DeltaClient:
         stop_loss_order and a take_profit_order, so a deliberately distant
         take-profit price is passed in to keep the TP effectively out of
         the way while the trailing stop does the real exit management.
+        Uses the same immediate-execution retry/widen safety net as a
+        fresh entry.
         """
         self.cancel_all_orders(product_id)
-        return self.place_bracket_order(
+        return self.place_bracket_order_safe(
             product_id, product_symbol, side, size,
-            new_stop_price, far_take_profit_price, trigger_method,
+            new_stop_price, far_take_profit_price, direction, trigger_method,
         )

@@ -21,6 +21,17 @@
     <div class="panel">
       <div class="panel-title">Trade Settings</div>
 
+      <div class="stat-row">
+        <div class="stat">
+          <div class="label">Balance</div>
+          <div class="value" id="stat-balance">—</div>
+        </div>
+        <div class="stat">
+          <div class="label">Open P&amp;L</div>
+          <div class="value" id="stat-pnl">—</div>
+        </div>
+      </div>
+
       <div class="field">
         <label for="symbol">Coin</label>
         <select id="symbol">
@@ -93,6 +104,8 @@
     </div>
   </div>
 </div>
+
+<div id="toast-stack" class="toast-stack"></div>
 
 {% endblock %}
 

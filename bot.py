@@ -187,7 +187,7 @@ class ScalpingBot:
 
                 if not volatile:
                     log.info(
-                        "1:1 reached (R=%.2f) and volatility unchanged (entry_atr=%.2f "
+                        "POSITION_CLOSED_BOT: 1:1 reached (R=%.2f), volatility unchanged (entry_atr=%.2f "
                         "current_atr=%.2f) -- closing full position at market.",
                         r, trade["entry_atr"], current_atr,
                     )
@@ -210,7 +210,7 @@ class ScalpingBot:
                         try:
                             self.trade_client.replace_stop_loss(
                                 self.product_id, config.SYMBOL, trade["side"], trade["size"],
-                                new_stop, far_tp,
+                                new_stop, far_tp, trade["direction"],
                             )
                         except DeltaAPIError as e:
                             log.error("Failed to switch to trailing stop: %s", e)
@@ -241,7 +241,7 @@ class ScalpingBot:
                     try:
                         self.trade_client.replace_stop_loss(
                             self.product_id, config.SYMBOL, trade["side"], trade["size"],
-                            candidate_stop, far_tp,
+                            candidate_stop, far_tp, trade["direction"],
                         )
                     except DeltaAPIError as e:
                         log.error("Failed to update trailing stop: %s", e)
@@ -301,7 +301,7 @@ class ScalpingBot:
                 positions = [positions]
             still_open = any(float(p.get("size", 0) or 0) != 0 for p in positions)
             if not still_open:
-                log.info("Tracked position no longer open on exchange (SL/TP likely hit). Clearing state.")
+                log.info("POSITION_CLOSED_EXTERNAL: no longer open on exchange (closed via SL/TP fill, or closed manually on Delta). Clearing tracked state.")
                 self.open_trade = None
 
         if self.has_open_position():
@@ -329,7 +329,6 @@ class ScalpingBot:
         exec_price = self.get_exec_price(real_market_price)
 
         sl_price, tp_price = strategy.compute_sl_tp(exec_price, direction, atr_value)
-        sl_distance = abs(exec_price - sl_price)
 
         if config.FIXED_SIZE > 0:
             size = config.FIXED_SIZE
@@ -351,23 +350,46 @@ class ScalpingBot:
 
         if config.DRY_RUN:
             log.info("[DRY_RUN] Would place entry + bracket order now.")
+            actual_entry_price = exec_price
+            final_sl_price, final_tp_price = sl_price, tp_price
         else:
             try:
-                result = self.trade_client.enter_with_bracket(
-                    self.product_id, config.SYMBOL, side, size, sl_price, tp_price,
-                )
-                log.info("Entry order: %s", result["entry"])
-                if result["bracket"] is not None:
-                    log.info("Bracket (SL/TP) attached: %s", result["bracket"])
-                else:
-                    log.warning(
-                        "Entry placed but bracket NOT attached (position not "
-                        "detected in time). Check Delta manually and consider "
-                        "closing/managing this position by hand."
-                    )
+                entry_result = self.trade_client.place_market_order(self.product_id, side, size)
+                log.info("Entry order: %s", entry_result)
             except DeltaAPIError as e:
-                log.error("Order placement failed: %s", e)
+                log.error("Entry order placement failed: %s", e)
                 return
+
+            position = self.trade_client.wait_for_position(self.product_id)
+            if position is None:
+                log.warning(
+                    "Entry placed but no open position detected in time -- "
+                    "skipping bracket attach this cycle. Check Delta manually "
+                    "and consider closing/managing this position by hand."
+                )
+                return
+
+            # Recompute SL/TP off the ACTUAL fill price rather than the
+            # pre-trade estimate -- the estimate can drift from where the
+            # order actually filled (this is what was causing Delta to
+            # reject brackets with 'bracket_order_immediate_execution').
+            try:
+                actual_entry_price = float(position.get("entry_price", exec_price))
+            except (TypeError, ValueError):
+                actual_entry_price = exec_price
+            final_sl_price, final_tp_price = strategy.compute_sl_tp(actual_entry_price, direction, atr_value)
+
+            try:
+                bracket_result = self.trade_client.place_bracket_order_safe(
+                    self.product_id, config.SYMBOL, side, size,
+                    final_sl_price, final_tp_price, direction,
+                )
+                log.info("Bracket (SL/TP) attached: %s", bracket_result)
+            except DeltaAPIError as e:
+                log.error(
+                    "Bracket (SL/TP) attach failed even after retries: %s. "
+                    "Position is OPEN WITHOUT protective orders -- check Delta manually.", e
+                )
 
         # Track this trade so manage_position() can run the 1:1 / trailing
         # logic on subsequent cycles.
@@ -375,11 +397,11 @@ class ScalpingBot:
             "direction": direction,
             "side": side,
             "size": size,
-            "entry_price": exec_price,
-            "sl_distance": sl_distance,
+            "entry_price": actual_entry_price,
+            "sl_distance": abs(actual_entry_price - final_sl_price),
             "entry_atr": atr_value,
-            "extreme_price": exec_price,
-            "current_stop": sl_price,
+            "extreme_price": actual_entry_price,
+            "current_stop": final_sl_price,
             "stage": "initial",
         }
 

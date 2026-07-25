@@ -21,9 +21,72 @@
   const btnSaveSettings = $('btn-save-settings');
   const btnClearLog = $('btn-clear-log');
   const autoScrollCheckbox = $('auto-scroll');
+  const toastStack = $('toast-stack');
+  const statBalance = $('stat-balance');
+  const statPnl = $('stat-pnl');
 
   let logOffset = 0;
   let logLinesRendered = 0;
+  let isFirstLogFetch = true;
+
+  function showToast(kind, title, body) {
+    if (!toastStack) return;
+    const el = document.createElement('div');
+    el.className = 'toast ' + kind;
+    el.innerHTML = `<div class="toast-title">${title}</div><div class="toast-body">${body}</div>`;
+    toastStack.appendChild(el);
+    setTimeout(() => {
+      el.classList.add('leaving');
+      setTimeout(() => el.remove(), 320);
+    }, 6000);
+  }
+
+  // Scans newly-arrived log lines for trade events worth surfacing as a
+  // popup: fresh long/short entries, and position closes (bot-initiated
+  // 1:1 exit, or externally closed via SL/TP fill or a manual close).
+  function checkLineForTradeEvents(line) {
+    const signalMatch = line.match(/SIGNAL (LONG|SHORT) \| real_market_price=([\d.]+).*?size=(\S+)/);
+    if (signalMatch) {
+      const [, dir, price, size] = signalMatch;
+      showToast(
+        dir.toLowerCase(),
+        `${dir} position opened`,
+        `Entry ~${price} · size ${size}`
+      );
+      return;
+    }
+    if (line.includes('POSITION_CLOSED_BOT')) {
+      showToast('closed', 'Position closed', 'Closed automatically at the 1:1 checkpoint.');
+      return;
+    }
+    if (line.includes('POSITION_CLOSED_EXTERNAL')) {
+      showToast('closed', 'Position closed', 'Closed on the exchange (SL/TP fill or manual close).');
+    }
+  }
+
+  async function refreshAccount() {
+    if (!statBalance) return;
+    try {
+      const res = await fetch('/api/account');
+      if (!res.ok) return;
+      const data = await res.json();
+      if (!data.ok) {
+        statBalance.textContent = '—';
+        statPnl.textContent = '—';
+        return;
+      }
+      statBalance.textContent = data.balance != null ? `$${Number(data.balance).toFixed(2)}` : '—';
+      if (data.position && data.position.unrealized_pnl != null) {
+        const pnl = Number(data.position.unrealized_pnl);
+        statPnl.textContent = `${pnl >= 0 ? '+' : ''}$${pnl.toFixed(2)}`;
+        statPnl.classList.remove('pos', 'neg');
+        statPnl.classList.add(pnl >= 0 ? 'pos' : 'neg');
+      } else {
+        statPnl.textContent = 'Flat';
+        statPnl.classList.remove('pos', 'neg');
+      }
+    } catch (e) { /* network hiccup, try again next tick */ }
+  }
 
   function setStatusPill(running) {
     statusPill.classList.remove('running', 'stopped');
@@ -49,6 +112,7 @@
       div.textContent = line;
       logConsole.appendChild(div);
       logLinesRendered++;
+      if (!isFirstLogFetch) checkLineForTradeEvents(line);
     }
     if (autoScrollCheckbox.checked && (atBottom || logLinesRendered === lines.length)) {
       logConsole.scrollTop = logConsole.scrollHeight;
@@ -78,6 +142,7 @@
       const data = await res.json();
       logOffset = data.offset;
       appendLogLines(data.lines || []);
+      isFirstLogFetch = false;
     } catch (e) { /* network hiccup, try again next tick */ }
   }
 
@@ -141,6 +206,8 @@
 
   refreshStatus();
   refreshLogs();
+  refreshAccount();
   setInterval(refreshStatus, 3000);
   setInterval(refreshLogs, 1500);
+  setInterval(refreshAccount, 4000);
 })();

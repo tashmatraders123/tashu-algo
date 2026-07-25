@@ -16,7 +16,7 @@
 
 <div class="page-header">
   <h1>Admin</h1>
-  <p>Approve new accounts and review everyone on Aurelius Algo.</p>
+  <p>Approve, suspend, or restore access for anyone using Aurelius Algo.</p>
 </div>
 
 <div class="dash" style="grid-template-columns: 1fr;">
@@ -51,15 +51,41 @@
   <div class="panel">
     <div class="panel-title">All Users</div>
     <table class="simple">
-      <thead><tr><th>Username</th><th>Status</th></tr></thead>
+      <thead><tr><th>Username</th><th>Role</th><th>Status</th><th style="width:1%;"></th></tr></thead>
       <tbody>
-        {% for u in all_users %}
+        {% for uname, data in all_users %}
         <tr>
-          <td>{{ u.username if u.username is defined else u }}</td>
-          <td>{{ u.status if u.status is defined else "" }}</td>
+          <td>{{ uname }}</td>
+          <td>{{ "Admin" if data.is_admin else "User" }}</td>
+          <td>
+            {% if not data.approved %}
+              <span class="status-pill stopped"><span class="dot"></span>Pending</span>
+            {% elif data.suspended %}
+              <span class="status-pill stopped"><span class="dot"></span>Suspended</span>
+            {% else %}
+              <span class="status-pill running"><span class="dot"></span>Active</span>
+            {% endif %}
+          </td>
+          <td>
+            {% if data.is_admin %}
+              <span class="hint">—</span>
+            {% elif not data.approved %}
+              <span class="hint">Awaiting approval above</span>
+            {% elif data.suspended %}
+              <form method="POST" action="{{ url_for('admin_unsuspend') }}">
+                <input type="hidden" name="username" value="{{ uname }}">
+                <button type="submit" class="btn btn-teal btn-sm">Unsuspend</button>
+              </form>
+            {% else %}
+              <form method="POST" action="{{ url_for('admin_suspend') }}">
+                <input type="hidden" name="username" value="{{ uname }}">
+                <button type="submit" class="btn btn-red btn-sm">Suspend</button>
+              </form>
+            {% endif %}
+          </td>
         </tr>
         {% else %}
-        <tr class="empty-row"><td colspan="2">No users yet.</td></tr>
+        <tr class="empty-row"><td colspan="4">No users yet.</td></tr>
         {% endfor %}
       </tbody>
     </table>

@@ -61,6 +61,13 @@ def login_required(f):
             if request.path.startswith("/api/"):
                 return jsonify({"ok": False, "error": "Not logged in"}), 401
             return redirect(url_for("login_page"))
+        if users.is_suspended(session["username"]):
+            # Access was revoked after this session started -- log them
+            # out now rather than letting an already-open tab keep working.
+            session.pop("username", None)
+            if request.path.startswith("/api/"):
+                return jsonify({"ok": False, "error": "Your access has been suspended"}), 403
+            return redirect(url_for("login_page"))
         return f(*args, **kwargs)
     return wrapper
 
@@ -123,6 +130,10 @@ def login_page():
         return render_template(
             "login.html", error="Your account is waiting for admin approval. Check back soon."
         )
+    if reason == "suspended":
+        return render_template(
+            "login.html", error="Your access has been suspended. Contact the admin for details."
+        )
     return render_template("login.html", error="Incorrect username or password")
 
 
@@ -167,6 +178,34 @@ def admin_approve():
 def admin_reject():
     target = request.form.get("username", "")
     users.reject_user(target)
+    return redirect(url_for("admin_page"))
+
+
+@app.route("/admin/suspend", methods=["POST"])
+@admin_required
+def admin_suspend():
+    target = request.form.get("username", "").strip().lower()
+    users.suspend_user(target)
+    # If their bot is currently running, stop it immediately rather than
+    # waiting for them to notice they've lost access.
+    with _processes_lock:
+        entry = _bot_processes.get(target)
+        if entry is not None and entry["process"].poll() is None:
+            entry["stop_requested_at"] = time.time()
+    paths = user_paths(target)
+    try:
+        with open(paths["stop_flag"], "w") as f:
+            f.write("stop")
+    except OSError:
+        pass
+    return redirect(url_for("admin_page"))
+
+
+@app.route("/admin/unsuspend", methods=["POST"])
+@admin_required
+def admin_unsuspend():
+    target = request.form.get("username", "")
+    users.unsuspend_user(target)
     return redirect(url_for("admin_page"))
 
 
