@@ -14,6 +14,7 @@ Loop:
 Set DRY_RUN=true in your .env to simulate everything without sending real
 orders -- highly recommended before going live.
 """
+import json
 import logging
 import os
 import signal
@@ -43,6 +44,15 @@ _running = True
 # own location) means each user's bot instance -- run with its own
 # per-user folder as the working directory -- gets its own isolated flag.
 STOP_FLAG_PATH = os.path.join(os.getcwd(), config.STOP_FLAG_FILE)
+
+# Written alongside the log file, in the same per-user directory, so the
+# web dashboard (a separate process) can read what the bot is currently
+# tracking for the open trade -- entry, stop/trailing level, stage, etc.
+# Derived from LOG_FILE's directory rather than a new config value, so no
+# config.py or app.py env changes are required for this to be per-user.
+POSITION_STATE_PATH = os.path.join(
+    os.getcwd(), os.path.dirname(config.LOG_FILE) or ".", "position_state.json"
+)
 
 
 def _stop_flag_set():
@@ -129,6 +139,20 @@ class ScalpingBot:
         start = end - (config.CANDLE_LOOKBACK * 60)
         candles = self.data_client.get_candles(config.SYMBOL, config.RESOLUTION, start, end)
         return strategy.candles_to_df(candles)
+
+    def _persist_position_state(self):
+        """
+        Writes the currently tracked trade (or null if flat) to disk so
+        the web dashboard -- a separate process -- can display live
+        position details (entry, current stop, stage, R-tracking data).
+        Best-effort: a write failure here should never interrupt trading.
+        """
+        try:
+            os.makedirs(os.path.dirname(POSITION_STATE_PATH) or ".", exist_ok=True)
+            with open(POSITION_STATE_PATH, "w", encoding="utf-8") as f:
+                json.dump(self.open_trade, f)
+        except OSError as e:
+            log.warning("Could not write position state file: %s", e)
 
     def get_exec_price(self, real_market_price):
         """
@@ -267,6 +291,7 @@ class ScalpingBot:
                 log.error("Failed to close position at 1:1: %s", e)
                 return
         self.open_trade = None
+        self._persist_position_state()
 
     def run_cycle(self):
         df = self.fetch_df()
@@ -303,9 +328,11 @@ class ScalpingBot:
             if not still_open:
                 log.info("POSITION_CLOSED_EXTERNAL: no longer open on exchange (closed via SL/TP fill, or closed manually on Delta). Clearing tracked state.")
                 self.open_trade = None
+                self._persist_position_state()
 
         if self.has_open_position():
             self.manage_position(last)
+            self._persist_position_state()
             return
 
         now_ts = int(time.time())
@@ -403,13 +430,17 @@ class ScalpingBot:
             "extreme_price": actual_entry_price,
             "current_stop": final_sl_price,
             "stage": "initial",
+            "opened_at": now_ts,
         }
+        self._persist_position_state()
 
         self.risk.mark_trade_taken(now_ts)
 
     def run_forever(self):
         self.setup()
         _clear_stop_flag()  # remove any leftover flag from a previous run
+        self.open_trade = None
+        self._persist_position_state()  # clear any stale state from a previous run
         global _running
         while _running:
             if _stop_flag_set():
@@ -423,6 +454,8 @@ class ScalpingBot:
                 log.exception("Unexpected error in cycle")
             time.sleep(config.POLL_SECONDS)
         _clear_stop_flag()
+        self.open_trade = None
+        self._persist_position_state()
         log.info("Bot stopped cleanly.")
 
 

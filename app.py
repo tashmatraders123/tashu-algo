@@ -9,6 +9,7 @@ group of people you personally trust with the link to this site --
 anyone who can reach it can create an account. Do not publicize the URL
 widely without adding stronger access control first.
 """
+import json
 import os
 import secrets
 import subprocess
@@ -101,8 +102,14 @@ def register_page():
     if request.method == "GET":
         return render_template("register.html", error=None)
     username = request.form.get("username", "")
+    email = request.form.get("email", "")
     password = request.form.get("password", "")
-    ok, error = users.create_user(username, password)
+    confirm_password = request.form.get("confirm_password", "")
+
+    if password != confirm_password:
+        return render_template("register.html", error="Passwords do not match")
+
+    ok, error = users.create_user(username, password, email=email)
     if not ok:
         return render_template("register.html", error=error)
     if users.is_admin(username.strip().lower()):
@@ -264,6 +271,135 @@ def api_account():
                 }
                 break
         return jsonify({"ok": True, "balance": balance, "position": open_position})
+    except DeltaAPIError as e:
+        return jsonify({"ok": False, "error": str(e)})
+    except Exception as e:
+        return jsonify({"ok": False, "error": f"Unexpected error: {e}"})
+
+
+def _read_position_state(username):
+    """Reads the bot's own tracked trade state (SL/trailing stop, stage,
+    R-tracking data) written by the running bot subprocess. Returns None
+    if the bot isn't tracking a trade or hasn't run yet."""
+    path = os.path.join(users.user_dir(username), "position_state.json")
+    if not os.path.exists(path):
+        return None
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            return json.load(f)
+    except (json.JSONDecodeError, OSError):
+        return None
+
+
+@app.route("/api/position")
+@login_required
+def api_position():
+    """
+    Rich position-details view for the dashboard: merges the LIVE position
+    straight from Delta (real entry price, size, unrealized P&L) with the
+    bot's own tracked state (current stop / trailing stage / R-distance),
+    since the exchange itself has no concept of "which stage of our
+    strategy this trade is in."
+    """
+    username = session["username"]
+    settings = users.get_settings(username)
+    state = _read_position_state(username)
+
+    result = {"ok": True, "has_position": False, "symbol": settings["symbol"]}
+
+    if not settings["api_key"] or not settings["api_secret"]:
+        result["ok"] = False
+        result["error"] = "Add your Delta API key/secret first"
+        return jsonify(result)
+
+    try:
+        base_url = (
+            "https://cdn-ind.testnet.deltaex.org" if settings["use_testnet"]
+            else "https://api.india.delta.exchange"
+        )
+        client = DeltaClient(base_url=base_url, api_key=settings["api_key"], api_secret=settings["api_secret"])
+        result["balance"] = client.get_available_balance()
+
+        product = client.get_product(settings["symbol"])
+        positions = client.get_positions(product["id"])
+        if isinstance(positions, dict):
+            positions = [positions]
+        live_position = next((p for p in positions if float(p.get("size", 0) or 0) != 0), None)
+
+        try:
+            result["current_price"] = float(client.get_ticker(settings["symbol"])["close"])
+        except DeltaAPIError:
+            result["current_price"] = None
+
+        if live_position:
+            result["has_position"] = True
+            result["side"] = "long" if float(live_position.get("size", 0)) > 0 else "short"
+            result["size"] = live_position.get("size")
+            result["entry_price"] = live_position.get("entry_price")
+            result["unrealized_pnl"] = live_position.get("unrealized_pnl")
+        elif state:
+            # Dry-run / just-filled timing gap: bot is tracking a trade the
+            # exchange hasn't reflected yet (or never will, in dry-run).
+            result["has_position"] = True
+            result["side"] = state.get("direction")
+            result["size"] = state.get("size")
+            result["entry_price"] = state.get("entry_price")
+            result["unrealized_pnl"] = None
+
+        if state:
+            result["stage"] = state.get("stage")
+            result["current_stop"] = state.get("current_stop")
+            result["sl_distance"] = state.get("sl_distance")
+            result["opened_at"] = state.get("opened_at")
+
+            sl_dist = state.get("sl_distance")
+            entry = result.get("entry_price")
+            cur = result.get("current_price")
+            direction = result.get("side")
+            if sl_dist and entry is not None and cur is not None and direction:
+                try:
+                    entry_f, cur_f = float(entry), float(cur)
+                    if direction == "long":
+                        result["r_multiple"] = (cur_f - entry_f) / sl_dist
+                    else:
+                        result["r_multiple"] = (entry_f - cur_f) / sl_dist
+                except (TypeError, ZeroDivisionError):
+                    pass
+
+        return jsonify(result)
+    except DeltaAPIError as e:
+        result["ok"] = False
+        result["error"] = str(e)
+        return jsonify(result)
+    except Exception as e:
+        result["ok"] = False
+        result["error"] = f"Unexpected error: {e}"
+        return jsonify(result)
+
+
+_market_data_client = None
+
+
+def _get_market_data_client():
+    global _market_data_client
+    if _market_data_client is None:
+        _market_data_client = DeltaClient(base_url=config.MARKET_DATA_BASE_URL, api_key="", api_secret="")
+    return _market_data_client
+
+
+@app.route("/api/market-ticker")
+@login_required
+def api_market_ticker():
+    """Live prices for the scrolling ticker strip. Public market data --
+    same for every user, no personal API keys involved."""
+    try:
+        client = _get_market_data_client()
+        tickers = client.get_tickers(COMMON_SYMBOLS)
+        out = [
+            {"symbol": t.get("symbol"), "price": t.get("close")}
+            for t in tickers if t.get("close") is not None
+        ]
+        return jsonify({"ok": True, "tickers": out})
     except DeltaAPIError as e:
         return jsonify({"ok": False, "error": str(e)})
     except Exception as e:

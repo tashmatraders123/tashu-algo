@@ -15,22 +15,17 @@
   </div>
 </nav>
 
+<div class="ticker-tape">
+  <div class="ticker-track" id="ticker-track">
+    <span class="ticker-item muted">Loading live prices&hellip;</span>
+  </div>
+</div>
+
 <div class="dash">
-  <!-- Left: trade settings -->
+  <!-- Left: trade settings + API keys -->
   <div>
     <div class="panel">
       <div class="panel-title">Trade Settings</div>
-
-      <div class="stat-row">
-        <div class="stat">
-          <div class="label">Balance</div>
-          <div class="value" id="stat-balance">—</div>
-        </div>
-        <div class="stat">
-          <div class="label">Open P&amp;L</div>
-          <div class="value" id="stat-pnl">—</div>
-        </div>
-      </div>
 
       <div class="field">
         <label for="symbol">Coin</label>
@@ -65,42 +60,61 @@
 
     <div class="panel">
       <div class="panel-title">Your Delta API Keys</div>
-      <div class="hint" style="margin-bottom:14px;" id="current-key-label">Current key: —</div>
 
-      <div class="field">
-        <label for="api_key">API Key</label>
-        <input type="text" id="api_key" placeholder="Leave blank to keep current key">
+      <div id="api-key-status" class="api-key-status">
+        <div class="api-key-info">
+          <div class="label">Current key</div>
+          <div class="value" id="current-key-label">—</div>
+        </div>
+        <button id="btn-change-key" class="btn btn-ghost btn-sm">Change API Key</button>
       </div>
-      <div class="field">
-        <label for="api_secret">API Secret</label>
-        <input type="password" id="api_secret" placeholder="Leave blank to keep current secret">
-      </div>
-
-      <div class="toggle-row">
-        <span class="toggle-label">Use testnet (demo, fake money)</span>
-        <span class="switch">
-          <input type="checkbox" id="use_testnet">
-          <span class="track"></span>
-        </span>
-      </div>
-
-      <button id="btn-save-settings" class="btn btn-ghost">Save Settings</button>
     </div>
   </div>
 
-  <!-- Right: live log -->
+  <!-- Right: live position details -->
   <div>
     <div class="panel">
-      <div class="panel-title">
-        Live Log
-        <span class="tools">
-          <label><input type="checkbox" id="auto-scroll" checked> Auto-scroll</label>
-          <button id="btn-clear-log" class="btn btn-ghost btn-sm">Clear view</button>
-        </span>
+      <div class="panel-title">Position Details</div>
+      <div id="position-details">
+        <div class="empty-state">No open position. Waiting for a signal.</div>
       </div>
-      <div id="log-console" class="log-console">
-        <div class="empty">Waiting for log output…</div>
-      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Floating live P&L widget -->
+<div id="pnl-float" class="pnl-float">
+  <div class="pnl-float-label">Balance</div>
+  <div class="pnl-float-balance" id="float-balance">—</div>
+  <div class="pnl-float-label">Open P&amp;L</div>
+  <div class="pnl-float-pnl" id="float-pnl">—</div>
+</div>
+
+<!-- API key change modal -->
+<div id="api-modal-overlay" class="modal-overlay hidden">
+  <div class="modal-card">
+    <div class="panel-title">Update Delta API Keys</div>
+
+    <div class="field">
+      <label for="api_key">API Key</label>
+      <input type="text" id="api_key" placeholder="Enter new API key">
+    </div>
+    <div class="field">
+      <label for="api_secret">API Secret</label>
+      <input type="password" id="api_secret" placeholder="Enter new API secret">
+    </div>
+
+    <div class="toggle-row">
+      <span class="toggle-label">Use testnet (demo, fake money)</span>
+      <span class="switch">
+        <input type="checkbox" id="use_testnet">
+        <span class="track"></span>
+      </span>
+    </div>
+
+    <div class="btn-row">
+      <button id="btn-save-settings" class="btn btn-gold">Save</button>
+      <button id="btn-cancel-modal" class="btn btn-ghost">Cancel</button>
     </div>
   </div>
 </div>

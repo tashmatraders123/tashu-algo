@@ -13,15 +13,24 @@
       <div class="alert alert-error">{{ error }}</div>
     {% endif %}
 
-    <form method="POST" action="{{ url_for('register_page') }}">
+    <form method="POST" action="{{ url_for('register_page') }}" id="register-form">
       <div class="field">
         <label for="username">Username</label>
         <input type="text" id="username" name="username" autocomplete="username" required autofocus>
       </div>
       <div class="field">
+        <label for="email">Email</label>
+        <input type="email" id="email" name="email" autocomplete="email" placeholder="you@example.com" required>
+      </div>
+      <div class="field">
         <label for="password">Password</label>
-        <input type="password" id="password" name="password" autocomplete="new-password" required>
-        <div class="hint">Your trading bot, API keys, and settings stay isolated to this account.</div>
+        <input type="password" id="password" name="password" autocomplete="new-password" minlength="6" required>
+        <div class="hint">At least 6 characters. Your trading bot, API keys, and settings stay isolated to this account.</div>
+      </div>
+      <div class="field">
+        <label for="confirm_password">Confirm Password</label>
+        <input type="password" id="confirm_password" name="confirm_password" autocomplete="new-password" minlength="6" required>
+        <div class="hint" id="password-match-hint"></div>
       </div>
       <button type="submit" class="btn btn-gold">Create Account</button>
     </form>
@@ -29,4 +38,33 @@
     <p class="foot-link">Already have one? <a href="{{ url_for('login_page') }}">Log in</a></p>
   </div>
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  (function () {
+    const form = document.getElementById('register-form');
+    const pw = document.getElementById('password');
+    const confirm = document.getElementById('confirm_password');
+    const hint = document.getElementById('password-match-hint');
+
+    function checkMatch() {
+      if (!confirm.value) { hint.textContent = ''; return true; }
+      if (pw.value !== confirm.value) {
+        hint.textContent = 'Passwords do not match.';
+        hint.style.color = 'var(--red)';
+        return false;
+      }
+      hint.textContent = 'Passwords match.';
+      hint.style.color = 'var(--teal)';
+      return true;
+    }
+
+    pw.addEventListener('input', checkMatch);
+    confirm.addEventListener('input', checkMatch);
+    form.addEventListener('submit', (e) => {
+      if (!checkMatch()) e.preventDefault();
+    });
+  })();
+</script>
 {% endblock %}

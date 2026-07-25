@@ -109,6 +109,19 @@ class DeltaClient:
                 return t
         raise DeltaAPIError(f"Symbol {symbol} not found in tickers")
 
+    def get_tickers(self, symbols=None):
+        """
+        Public endpoint. Returns ticker data for all products, or just the
+        given list of symbols if provided. Used for the live scrolling
+        price ticker on the dashboard.
+        """
+        data = self._request("GET", "/v2/tickers", auth=False)
+        results = data.get("result", [])
+        if symbols:
+            wanted = set(symbols)
+            results = [t for t in results if t.get("symbol") in wanted]
+        return results
+
     def get_candles(self, symbol, resolution, start, end):
         """
         resolution: "1", "3", "5", "15", "30", "60", "1D" etc (Delta uses these codes;

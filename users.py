@@ -50,7 +50,7 @@ def user_exists(username):
     return username in _load()
 
 
-def create_user(username, password):
+def create_user(username, password, email=""):
     username = username.strip().lower()
     if not username or not password:
         return False, "Username and password are required"
@@ -63,6 +63,7 @@ def create_user(username, password):
         is_first_user = len(users) == 0
         users[username] = {
             "password_hash": generate_password_hash(password),
+            "email": email.strip(),
             "settings": dict(DEFAULT_SETTINGS),
             # The very first account ever created becomes the admin and is
             # auto-approved. Everyone after that needs the admin to approve

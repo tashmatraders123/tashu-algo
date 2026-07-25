@@ -4,11 +4,10 @@
 
 (function () {
   const $ = (id) => document.getElementById(id);
-  const logConsole = $('log-console');
-
-  if (!logConsole) return; // not on the dashboard page
-
   const statusPill = $('status-pill');
+
+  if (!statusPill) return; // not on the dashboard page
+
   const symbolSelect = $('symbol');
   const fixedSizeInput = $('fixed_size');
   const liveTradingToggle = $('live_trading');
@@ -16,19 +15,25 @@
   const apiKeyInput = $('api_key');
   const apiSecretInput = $('api_secret');
   const currentKeyLabel = $('current-key-label');
+  const btnChangeKey = $('btn-change-key');
   const btnStart = $('btn-start');
   const btnStop = $('btn-stop');
   const btnSaveSettings = $('btn-save-settings');
-  const btnClearLog = $('btn-clear-log');
-  const autoScrollCheckbox = $('auto-scroll');
+  const btnCancelModal = $('btn-cancel-modal');
+  const apiModalOverlay = $('api-modal-overlay');
   const toastStack = $('toast-stack');
-  const statBalance = $('stat-balance');
-  const statPnl = $('stat-pnl');
+  const tickerTrack = $('ticker-track');
+  const positionDetails = $('position-details');
+  const floatBalance = $('float-balance');
+  const floatPnl = $('float-pnl');
 
-  let logOffset = 0;
-  let logLinesRendered = 0;
-  let isFirstLogFetch = true;
+  let hadApiKeys = false;
+  let wasInPosition = false;
+  let isFirstPositionFetch = true;
 
+  // ------------------------------------------------------------
+  // Toasts
+  // ------------------------------------------------------------
   function showToast(kind, title, body) {
     if (!toastStack) return;
     const el = document.createElement('div');
@@ -41,82 +46,15 @@
     }, 6000);
   }
 
-  // Scans newly-arrived log lines for trade events worth surfacing as a
-  // popup: fresh long/short entries, and position closes (bot-initiated
-  // 1:1 exit, or externally closed via SL/TP fill or a manual close).
-  function checkLineForTradeEvents(line) {
-    const signalMatch = line.match(/SIGNAL (LONG|SHORT) \| real_market_price=([\d.]+).*?size=(\S+)/);
-    if (signalMatch) {
-      const [, dir, price, size] = signalMatch;
-      showToast(
-        dir.toLowerCase(),
-        `${dir} position opened`,
-        `Entry ~${price} · size ${size}`
-      );
-      return;
-    }
-    if (line.includes('POSITION_CLOSED_BOT')) {
-      showToast('closed', 'Position closed', 'Closed automatically at the 1:1 checkpoint.');
-      return;
-    }
-    if (line.includes('POSITION_CLOSED_EXTERNAL')) {
-      showToast('closed', 'Position closed', 'Closed on the exchange (SL/TP fill or manual close).');
-    }
-  }
-
-  async function refreshAccount() {
-    if (!statBalance) return;
-    try {
-      const res = await fetch('/api/account');
-      if (!res.ok) return;
-      const data = await res.json();
-      if (!data.ok) {
-        statBalance.textContent = '—';
-        statPnl.textContent = '—';
-        return;
-      }
-      statBalance.textContent = data.balance != null ? `$${Number(data.balance).toFixed(2)}` : '—';
-      if (data.position && data.position.unrealized_pnl != null) {
-        const pnl = Number(data.position.unrealized_pnl);
-        statPnl.textContent = `${pnl >= 0 ? '+' : ''}$${pnl.toFixed(2)}`;
-        statPnl.classList.remove('pos', 'neg');
-        statPnl.classList.add(pnl >= 0 ? 'pos' : 'neg');
-      } else {
-        statPnl.textContent = 'Flat';
-        statPnl.classList.remove('pos', 'neg');
-      }
-    } catch (e) { /* network hiccup, try again next tick */ }
-  }
-
+  // ------------------------------------------------------------
+  // Status (symbol / lot size / toggles / running state)
+  // ------------------------------------------------------------
   function setStatusPill(running) {
     statusPill.classList.remove('running', 'stopped');
     statusPill.classList.add(running ? 'running' : 'stopped');
     statusPill.innerHTML = `<span class="dot"></span>${running ? 'Running' : 'Stopped'}`;
     btnStart.disabled = running;
     btnStop.disabled = !running;
-  }
-
-  function classifyLine(line) {
-    if (line.includes('[ERROR]')) return 'error';
-    if (line.includes('[WARNING]')) return 'warning';
-    return 'info';
-  }
-
-  function appendLogLines(lines) {
-    if (!lines.length) return;
-    if (logLinesRendered === 0) logConsole.innerHTML = '';
-    const atBottom = logConsole.scrollTop + logConsole.clientHeight >= logConsole.scrollHeight - 20;
-    for (const line of lines) {
-      const div = document.createElement('div');
-      div.className = 'line ' + classifyLine(line);
-      div.textContent = line;
-      logConsole.appendChild(div);
-      logLinesRendered++;
-      if (!isFirstLogFetch) checkLineForTradeEvents(line);
-    }
-    if (autoScrollCheckbox.checked && (atBottom || logLinesRendered === lines.length)) {
-      logConsole.scrollTop = logConsole.scrollHeight;
-    }
   }
 
   async function refreshStatus() {
@@ -129,20 +67,9 @@
       if (document.activeElement !== fixedSizeInput) fixedSizeInput.value = data.fixed_size;
       liveTradingToggle.checked = !data.dry_run;
       useTestnetToggle.checked = data.use_testnet;
-      currentKeyLabel.textContent = data.has_api_keys
-        ? `Current key: ${data.api_key_masked}`
-        : 'No API key saved yet';
-    } catch (e) { /* network hiccup, try again next tick */ }
-  }
-
-  async function refreshLogs() {
-    try {
-      const res = await fetch(`/api/logs?since=${logOffset}`);
-      if (!res.ok) return;
-      const data = await res.json();
-      logOffset = data.offset;
-      appendLogLines(data.lines || []);
-      isFirstLogFetch = false;
+      hadApiKeys = data.has_api_keys;
+      currentKeyLabel.textContent = data.has_api_keys ? data.api_key_masked : 'No API key saved yet';
+      btnChangeKey.textContent = data.has_api_keys ? 'Change API Key' : 'Add API Key';
     } catch (e) { /* network hiccup, try again next tick */ }
   }
 
@@ -176,6 +103,24 @@
     refreshStatus();
   });
 
+  // ------------------------------------------------------------
+  // API key modal
+  // ------------------------------------------------------------
+  function openModal() {
+    apiKeyInput.value = '';
+    apiSecretInput.value = '';
+    apiModalOverlay.classList.remove('hidden');
+  }
+  function closeModal() {
+    apiModalOverlay.classList.add('hidden');
+  }
+
+  btnChangeKey.addEventListener('click', openModal);
+  btnCancelModal.addEventListener('click', closeModal);
+  apiModalOverlay.addEventListener('click', (e) => {
+    if (e.target === apiModalOverlay) closeModal();
+  });
+
   btnSaveSettings.addEventListener('click', async () => {
     const payload = { use_testnet: useTestnetToggle.checked };
     if (apiKeyInput.value.trim()) payload.api_key = apiKeyInput.value.trim();
@@ -188,26 +133,123 @@
       });
       const data = await res.json();
       if (data.ok) {
-        apiKeyInput.value = '';
-        apiSecretInput.value = '';
-        btnSaveSettings.textContent = 'Saved';
-        setTimeout(() => { btnSaveSettings.textContent = 'Save Settings'; }, 1500);
+        closeModal();
         refreshStatus();
+      } else {
+        alert(data.error || 'Could not save settings.');
       }
     } catch (e) {
       alert('Could not reach the server.');
     }
   });
 
-  btnClearLog.addEventListener('click', () => {
-    logConsole.innerHTML = '<div class="empty">Cleared — new lines will appear here.</div>';
-    logLinesRendered = 0;
-  });
+  // ------------------------------------------------------------
+  // Live price ticker tape
+  // ------------------------------------------------------------
+  async function refreshTicker() {
+    if (!tickerTrack) return;
+    try {
+      const res = await fetch('/api/market-ticker');
+      if (!res.ok) return;
+      const data = await res.json();
+      if (!data.ok || !data.tickers || !data.tickers.length) return;
+      const itemsHtml = data.tickers
+        .map(t => `<span class="ticker-item"><span class="sym">${t.symbol}</span>${Number(t.price).toLocaleString(undefined, {maximumFractionDigits: 2})}</span>`)
+        .join('');
+      // Duplicated once for a seamless CSS marquee loop.
+      tickerTrack.innerHTML = itemsHtml + itemsHtml;
+    } catch (e) { /* network hiccup, try again next tick */ }
+  }
+
+  // ------------------------------------------------------------
+  // Position details + floating P&L + trade-event toasts
+  // ------------------------------------------------------------
+  function fmtMoney(n) {
+    if (n == null || isNaN(n)) return '—';
+    const v = Number(n);
+    return `${v >= 0 ? '+' : ''}$${v.toFixed(2)}`;
+  }
+
+  function renderPosition(data) {
+    if (!data.has_position) {
+      positionDetails.innerHTML = '<div class="empty-state">No open position. Waiting for a signal.</div>';
+      return;
+    }
+    const side = (data.side || '').toLowerCase();
+    const sideLabel = side === 'long' ? 'Long' : side === 'short' ? 'Short' : '—';
+    const pnl = data.unrealized_pnl != null ? Number(data.unrealized_pnl) : null;
+    const pnlClass = pnl == null ? '' : (pnl >= 0 ? 'pos' : 'neg');
+    const rMult = data.r_multiple != null ? Number(data.r_multiple).toFixed(2) + 'R' : '—';
+    const stageLabel = data.stage === 'trailing' ? 'Trailing stop' : data.stage === 'initial' ? 'Initial (1:2)' : '—';
+    const openedAt = data.opened_at ? new Date(data.opened_at * 1000).toLocaleTimeString() : '—';
+
+    positionDetails.innerHTML = `
+      <div style="margin-bottom:16px;">
+        <span class="side-badge ${side}">${sideLabel} · ${data.symbol || ''}</span>
+      </div>
+      <div class="position-grid">
+        <div class="pos-item"><div class="label">Entry Price</div><div class="value">${data.entry_price != null ? Number(data.entry_price).toFixed(2) : '—'}</div></div>
+        <div class="pos-item"><div class="label">Current Price</div><div class="value">${data.current_price != null ? Number(data.current_price).toFixed(2) : '—'}</div></div>
+        <div class="pos-item"><div class="label">Stop / Trail</div><div class="value">${data.current_stop != null ? Number(data.current_stop).toFixed(2) : '—'}</div></div>
+        <div class="pos-item"><div class="label">Size</div><div class="value">${data.size != null ? data.size : '—'}</div></div>
+        <div class="pos-item"><div class="label">Stage</div><div class="value">${stageLabel}</div></div>
+        <div class="pos-item"><div class="label">R-Multiple</div><div class="value">${rMult}</div></div>
+        <div class="pos-item span-2"><div class="label">Unrealized P&amp;L</div><div class="value ${pnlClass}">${fmtMoney(pnl)}</div></div>
+        <div class="pos-item span-2"><div class="label">Opened At</div><div class="value">${openedAt}</div></div>
+      </div>
+    `;
+  }
+
+  async function refreshPosition() {
+    try {
+      const res = await fetch('/api/position');
+      if (!res.ok) return;
+      const data = await res.json();
+
+      if (!data.ok) {
+        floatBalance.textContent = '—';
+        floatPnl.textContent = '—';
+        floatPnl.classList.remove('pos', 'neg');
+        return;
+      }
+
+      floatBalance.textContent = data.balance != null ? `$${Number(data.balance).toFixed(2)}` : '—';
+      if (data.has_position && data.unrealized_pnl != null) {
+        const pnl = Number(data.unrealized_pnl);
+        floatPnl.textContent = fmtMoney(pnl);
+        floatPnl.classList.remove('pos', 'neg');
+        floatPnl.classList.add(pnl >= 0 ? 'pos' : 'neg');
+      } else {
+        floatPnl.textContent = 'Flat';
+        floatPnl.classList.remove('pos', 'neg');
+      }
+
+      renderPosition(data);
+
+      // Trade-event popups: fire on has_position transitions, not on the
+      // very first fetch after page load (that would just be the current
+      // state, not a new event).
+      if (!isFirstPositionFetch) {
+        if (!wasInPosition && data.has_position) {
+          const dir = (data.side || '').toUpperCase();
+          showToast(
+            (data.side || '').toLowerCase() === 'short' ? 'short' : 'long',
+            `${dir} position opened`,
+            `Entry ~${data.entry_price != null ? Number(data.entry_price).toFixed(2) : '—'} · size ${data.size ?? '—'}`
+          );
+        } else if (wasInPosition && !data.has_position) {
+          showToast('closed', 'Position closed', 'Closed via 1:1 exit, SL/TP fill, or manual close.');
+        }
+      }
+      wasInPosition = data.has_position;
+      isFirstPositionFetch = false;
+    } catch (e) { /* network hiccup, try again next tick */ }
+  }
 
   refreshStatus();
-  refreshLogs();
-  refreshAccount();
+  refreshTicker();
+  refreshPosition();
   setInterval(refreshStatus, 3000);
-  setInterval(refreshLogs, 1500);
-  setInterval(refreshAccount, 4000);
+  setInterval(refreshTicker, 6000);
+  setInterval(refreshPosition, 3000);
 })();
