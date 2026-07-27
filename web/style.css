@@ -916,3 +916,12 @@ table.simple .empty-row td { color: var(--text-faint); font-style: italic; text-
 /* Live value transitions -- used on the floating P&L widget and stat
    values so updated numbers settle in smoothly rather than jump-cutting. */
 .value-transition { transition: color 0.4s var(--ease); }
+
+/* ------------------------------------------------------------
+   Live price chart
+   ------------------------------------------------------------ */
+.chart-wrap {
+  position: relative;
+  height: 220px;
+}
+.chart-wrap canvas { max-height: 220px; }

@@ -227,7 +227,7 @@
     const updatedAgo = state.updated_at ? Math.max(0, Math.round(Date.now() / 1000 - state.updated_at)) : null;
     return `
       <div class="empty-state" style="padding: 10px 4px 18px; font-style: normal;">
-        No open position — here's what the algo is currently reading (${state.strategy_mode || ''} mode, ${state.resolution || ''}m candles):
+        No open position — here's what the algo is currently reading (${state.strategy_mode || ''} mode, ${state.resolution || ''} candles):
       </div>
       <div style="margin-bottom:14px;">
         <span class="side-badge ${biasClass}">${biasLabel} bias</span>
@@ -447,12 +447,104 @@
     });
   }
 
+  // ------------------------------------------------------------
+  // Live price chart
+  // ------------------------------------------------------------
+  const priceChartCanvas = $('price-chart');
+  const chartSymbolLabel = $('chart-symbol-label');
+  let priceChart = null;
+
+  function initPriceChart() {
+    if (!priceChartCanvas || typeof Chart === 'undefined') return;
+    const ctx = priceChartCanvas.getContext('2d');
+    const gradient = ctx.createLinearGradient(0, 0, 0, 220);
+    gradient.addColorStop(0, 'rgba(232, 196, 107, 0.28)');
+    gradient.addColorStop(1, 'rgba(232, 196, 107, 0)');
+
+    priceChart = new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: [],
+        datasets: [{
+          data: [],
+          borderColor: '#e8c46b',
+          backgroundColor: gradient,
+          borderWidth: 2,
+          fill: true,
+          tension: 0.35,
+          pointRadius: 0,
+          pointHitRadius: 12,
+          pointHoverRadius: 4,
+          pointHoverBackgroundColor: '#e8c46b',
+        }],
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        animation: { duration: 600, easing: 'easeOutCubic' },
+        interaction: { intersect: false, mode: 'index' },
+        scales: {
+          x: { display: false },
+          y: {
+            display: true,
+            position: 'right',
+            grid: { color: 'rgba(255,255,255,0.05)' },
+            ticks: { color: '#8a8f9c', font: { family: 'IBM Plex Mono', size: 10 } },
+          },
+        },
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            backgroundColor: '#171a23',
+            borderColor: 'rgba(201,162,39,0.3)',
+            borderWidth: 1,
+            titleColor: '#e9e5d8',
+            bodyColor: '#e8c46b',
+            padding: 10,
+            displayColors: false,
+          },
+        },
+      },
+    });
+  }
+
+  async function refreshChart() {
+    if (!priceChartCanvas) return;
+    try {
+      const res = await fetch('/api/chart-data');
+      if (!res.ok) return;
+      const data = await res.json();
+      if (!data.ok || !data.candles || !data.candles.length) return;
+      if (!priceChart) initPriceChart();
+      if (!priceChart) return;
+
+      const labels = data.candles.map(c => new Date(c.t * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
+      const closes = data.candles.map(c => c.c);
+      const trendingUp = closes.length > 1 && closes[closes.length - 1] >= closes[0];
+      const lineColor = trendingUp ? '#2fbf9d' : '#e0555a';
+
+      priceChart.data.labels = labels;
+      priceChart.data.datasets[0].data = closes;
+      priceChart.data.datasets[0].borderColor = lineColor;
+      const ctx = priceChartCanvas.getContext('2d');
+      const gradient = ctx.createLinearGradient(0, 0, 0, 220);
+      gradient.addColorStop(0, trendingUp ? 'rgba(47,191,157,0.25)' : 'rgba(224,85,90,0.22)');
+      gradient.addColorStop(1, trendingUp ? 'rgba(47,191,157,0)' : 'rgba(224,85,90,0)');
+      priceChart.data.datasets[0].backgroundColor = gradient;
+      priceChart.update();
+
+      if (chartSymbolLabel) chartSymbolLabel.textContent = data.symbol || '';
+    } catch (e) { /* network hiccup, try again next tick */ }
+  }
+
   refreshStatus();
   refreshTicker();
   refreshPosition();
   refreshTrades();
+  refreshChart();
   setInterval(refreshStatus, 3000);
   setInterval(refreshTicker, 6000);
   setInterval(refreshPosition, 3000);
   setInterval(refreshTrades, 8000);
+  setInterval(refreshChart, 10000);
 })();

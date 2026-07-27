@@ -80,8 +80,20 @@
     </div>
   </div>
 
-  <!-- Right: live position details + recent trades -->
+  <!-- Right: live chart + position details + recent trades -->
   <div>
+    <div class="panel">
+      <div class="panel-title">
+        Live Price
+        <span class="tools">
+          <span id="chart-symbol-label" class="hint"></span>
+        </span>
+      </div>
+      <div class="chart-wrap">
+        <canvas id="price-chart" height="90"></canvas>
+      </div>
+    </div>
+
     <div class="panel">
       <div class="panel-title">Position Details</div>
       <div id="position-details">

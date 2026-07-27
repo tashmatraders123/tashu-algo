@@ -412,6 +412,35 @@ def api_market_ticker():
         return jsonify({"ok": False, "error": f"Unexpected error: {e}"})
 
 
+@app.route("/api/chart-data")
+@login_required
+def api_chart_data():
+    """
+    Recent candles for the dashboard's live price chart, using the
+    user's own configured symbol and resolution. Public market data
+    (real market, same source the bot uses for signals) -- no personal
+    API keys involved, so this works even before a key is saved.
+    """
+    username = session["username"]
+    settings = users.get_settings(username)
+    resolution = request.args.get("resolution", "5m")
+    symbol = settings["symbol"]
+    try:
+        client = _get_market_data_client()
+        end = int(time.time())
+        start = end - 60 * 60 * 24  # last 24 hours of candles
+        candles = client.get_candles(symbol, resolution, start, end)
+        out = [
+            {"t": c.get("time"), "c": c.get("close")}
+            for c in candles if c.get("close") is not None
+        ]
+        return jsonify({"ok": True, "symbol": symbol, "candles": out[-100:]})
+    except DeltaAPIError as e:
+        return jsonify({"ok": False, "error": str(e)})
+    except Exception as e:
+        return jsonify({"ok": False, "error": f"Unexpected error: {e}"})
+
+
 # ----------------------------------------------------------------------
 # API: trade history + Excel export
 # ----------------------------------------------------------------------
