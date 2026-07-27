@@ -69,7 +69,7 @@ def add_indicators(df):
 
 def generate_signal(df):
     """
-    Two modes, controlled by config.STRATEGY_MODE:
+    Three modes, controlled by config.STRATEGY_MODE:
 
     "trend" (default) -- fires on EVERY closed candle where price and both
         EMAs are aligned with a trend and RSI confirms momentum. This trades
@@ -80,9 +80,16 @@ def generate_signal(df):
     "crossover" -- only fires the moment the fast EMA freshly crosses the
         slow EMA. Fewer, more selective signals.
 
+    "a_plus" -- the most selective mode, intended for higher timeframes
+        (5m/15m) to cut trade frequency and fee drag. See
+        _generate_a_plus_signal for the exact confluence it requires.
+
     Returns one of: "long", "short", None, plus the ATR value at the
     signal candle (used for SL/TP sizing).
     """
+    if config.STRATEGY_MODE == "a_plus":
+        return _generate_a_plus_signal(df)
+
     if len(df) < max(config.EMA_SLOW, config.RSI_PERIOD, config.ATR_PERIOD) + 2:
         return None, None
 
@@ -107,6 +114,68 @@ def generate_signal(df):
         return "long", last["atr"]
     if downtrend and config.RSI_SHORT_MIN <= last["rsi"] <= config.RSI_SHORT_MAX:
         return "short", last["atr"]
+
+    return None, None
+
+
+def _generate_a_plus_signal(df):
+    """
+    Higher-selectivity setup for higher timeframes (5m/15m), meant to
+    trade less often but with more confluence per trade than the 1m
+    scalper modes -- directly addresses "too many trades, too much fee
+    drag." A signal only fires when ALL of the following hold:
+
+      1. Clear trend: EMA fast/slow separation is at least
+         A_PLUS_MIN_TREND_ATR_MULT x ATR -- filters out flat/choppy
+         markets where the EMAs are tangled together.
+      2. A recent pullback toward the fast EMA within the last
+         A_PLUS_PULLBACK_LOOKBACK candles, with the CURRENT candle
+         resuming in the trend direction -- a "buy the dip" / "sell the
+         rip" continuation entry, not a chase of an already-extended move.
+      3. RSI confirms momentum: above 50 and rising for longs, below 50
+         and falling for shorts -- not just "somewhere in a wide band."
+      4. The current candle itself closes with conviction (closes in the
+         upper third of its own range for longs, lower third for shorts)
+         -- filters out indecisive/doji candles right at the trigger.
+
+    Both thresholds are tunable via .env (A_PLUS_MIN_TREND_ATR_MULT,
+    A_PLUS_PULLBACK_LOOKBACK) but have sane defaults if left unset.
+    """
+    lookback = getattr(config, "A_PLUS_PULLBACK_LOOKBACK", 5)
+    trend_atr_mult = getattr(config, "A_PLUS_MIN_TREND_ATR_MULT", 0.5)
+
+    min_len = max(config.EMA_SLOW, config.RSI_PERIOD, config.ATR_PERIOD) + lookback + 2
+    if len(df) < min_len:
+        return None, None
+
+    last = df.iloc[-1]
+    prev = df.iloc[-2]
+    recent = df.iloc[-(lookback + 1):-1]  # the candles BEFORE the current one
+
+    if last["atr"] <= 0:
+        return None, None
+
+    ema_sep = last["ema_fast"] - last["ema_slow"]
+    trend_strength_ok = abs(ema_sep) >= (trend_atr_mult * last["atr"])
+
+    uptrend = ema_sep > 0 and last["close"] > last["ema_slow"]
+    downtrend = ema_sep < 0 and last["close"] < last["ema_slow"]
+
+    candle_range = last["high"] - last["low"]
+    bullish_close = candle_range > 0 and (last["close"] - last["low"]) / candle_range >= 0.66
+    bearish_close = candle_range > 0 and (last["high"] - last["close"]) / candle_range >= 0.66
+
+    if trend_strength_ok and uptrend:
+        pulled_back = bool((recent["low"] <= recent["ema_fast"]).any())
+        momentum_ok = last["rsi"] > 50 and last["rsi"] > prev["rsi"]
+        if pulled_back and momentum_ok and bullish_close:
+            return "long", last["atr"]
+
+    if trend_strength_ok and downtrend:
+        pulled_back = bool((recent["high"] >= recent["ema_fast"]).any())
+        momentum_ok = last["rsi"] < 50 and last["rsi"] < prev["rsi"]
+        if pulled_back and momentum_ok and bearish_close:
+            return "short", last["atr"]
 
     return None, None
 
