@@ -183,6 +183,20 @@ class DeltaClient:
         data = self._request("GET", "/v2/orders", params=params, auth=True)
         return data.get("result", [])
 
+    def get_fills(self, product_id=None, page_size=20):
+        """
+        Real executed trade fills straight from the exchange -- used for
+        the dashboard's "Recent Trades" list. This is the source of
+        truth for what actually happened (entries, SL hits, TP hits,
+        manual trades), rather than re-deriving trade history from the
+        bot's own log lines.
+        """
+        params = {"page_size": str(page_size)}
+        if product_id:
+            params["product_id"] = product_id
+        data = self._request("GET", "/v2/fills", params=params, auth=True)
+        return data.get("result", [])
+
     # ------------------------------------------------------------------
     # Orders
     # ------------------------------------------------------------------

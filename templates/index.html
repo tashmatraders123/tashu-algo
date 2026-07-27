@@ -146,6 +146,24 @@
 
       <section class="glass card">
         <div class="card-title">
+          <h2><span class="eyebrow-icon"></span> Recent trades</h2>
+        </div>
+        <div id="trades-card-body">
+          <div class="skeleton skeleton-line" style="width:80%;"></div>
+          <div class="skeleton skeleton-line short"></div>
+        </div>
+
+        <div class="log-toggle" id="log-toggle" style="margin-top:16px; border-top:1px solid var(--line); padding-top:14px;">
+          <span class="text-sm text-muted">Activity log</span>
+          <span class="chev">&#9660;</span>
+        </div>
+        <div class="log-body" id="log-body">
+          <div class="log-lines" id="log-lines"></div>
+        </div>
+      </section>
+
+      <section class="glass card">
+        <div class="card-title">
           <h2><span class="eyebrow-icon"></span> Algorithm</h2>
         </div>
         <div id="algo-card-body">

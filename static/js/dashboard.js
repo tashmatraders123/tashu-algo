@@ -344,6 +344,90 @@ async function loadAlgo() {
 }
 
 // ---------------------------------------------------------------------
+// Recent Trades (real exchange fills)
+// ---------------------------------------------------------------------
+function fmtTime(epochSeconds) {
+  if (!epochSeconds) return "--";
+  const d = new Date(epochSeconds * 1000);
+  return d.toLocaleString(undefined, { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
+}
+
+async function loadTrades() {
+  const data = await safeFetchJson("/api/trades");
+  const el = document.getElementById("trades-card-body");
+  if (!el) return;
+
+  if (!data.ok) {
+    el.innerHTML = `<div class="empty-note">${data.error || "Could not load trade history."}</div>`;
+    return;
+  }
+  if (!data.trades || data.trades.length === 0) {
+    el.innerHTML = `<div class="empty-note">No trades yet -- they'll show up here as soon as the bot fills an order.</div>`;
+    return;
+  }
+
+  el.innerHTML = data.trades.map((t) => `
+    <div class="trade-row">
+      <div class="trade-left">
+        <span class="trade-side ${t.side === 'buy' ? 'buy' : 'sell'}">${(t.side || '?').toUpperCase()}</span>
+        <div class="trade-meta">
+          <span class="role">${t.role === 'exit' ? 'Exit' : 'Entry'} &middot; ${t.order_type}</span>
+          <span class="time">${fmtTime(t.time)}</span>
+        </div>
+      </div>
+      <div class="trade-right">
+        <div class="price">${fmtPrice(t.price)}</div>
+        <div class="size">${t.size} ${t.symbol}</div>
+      </div>
+    </div>
+  `).join("");
+}
+
+// ---------------------------------------------------------------------
+// Activity log (collapsible, same color-coding as the old .pyw viewers)
+// ---------------------------------------------------------------------
+let _logOffset = 0;
+let _logPollTimer = null;
+
+function classifyLogLine(line) {
+  if (line.includes("[ERROR]")) return "error";
+  if (line.includes("[WARNING]")) return "warning";
+  if (line.includes("SIGNAL") || line.includes("Order placed") || line.includes("Entry order") || line.includes("Bracket")) return "signal";
+  return "info";
+}
+
+async function pollActivityLog() {
+  const data = await safeFetchJson(`/api/logs?since=${_logOffset}`);
+  if (!data || !data.lines) return;
+  if (data.lines.length) {
+    const container = document.getElementById("log-lines");
+    const atBottom = container.scrollHeight - container.clientHeight <= container.scrollTop + 4;
+    const html = data.lines.map((l) => `<div class="log-line ${classifyLogLine(l)}">${l.replace(/</g, "&lt;")}</div>`).join("");
+    container.insertAdjacentHTML("beforeend", html);
+    if (atBottom) container.scrollTop = container.scrollHeight;
+  }
+  _logOffset = data.offset ?? _logOffset;
+}
+
+function initActivityLog() {
+  const toggle = document.getElementById("log-toggle");
+  const body = document.getElementById("log-body");
+  if (!toggle || !body) return;
+  toggle.addEventListener("click", () => {
+    const opening = !body.classList.contains("open");
+    toggle.classList.toggle("open", opening);
+    body.classList.toggle("open", opening);
+    if (opening && !_logPollTimer) {
+      pollActivityLog();
+      _logPollTimer = setInterval(pollActivityLog, 3000);
+    } else if (!opening && _logPollTimer) {
+      clearInterval(_logPollTimer);
+      _logPollTimer = null;
+    }
+  });
+}
+
+// ---------------------------------------------------------------------
 // API key: hidden once set, revealed only via "Change API key"
 // ---------------------------------------------------------------------
 function initApiKeyFlow() {
@@ -442,11 +526,14 @@ function initPnlFloatDrag() {
 document.addEventListener("DOMContentLoaded", () => {
   initApiKeyFlow();
   initPnlFloatDrag();
+  initActivityLog();
   refreshStatus();
   refreshAccount();
   loadAlgo();
+  loadTrades();
   setInterval(refreshStatus, STATUS_REFRESH_MS);
   setInterval(refreshAccount, ACCOUNT_REFRESH_MS);
+  setInterval(loadTrades, 8000);
 });
 
 window.addEventListener("error", (e) => {

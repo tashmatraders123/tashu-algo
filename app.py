@@ -421,6 +421,56 @@ def api_account():
         return jsonify({"ok": False, "error": f"Unexpected error: {e}", "running": running})
 
 
+@app.route("/api/trades")
+@login_required
+def api_trades():
+    """Recent Trades -- real executed fills from the exchange (not a
+    re-parse of the bot's log), so it's accurate even for trades placed
+    outside the bot and survives the bot process restarting."""
+    username = session["username"]
+    settings = users.get_settings(username)
+    if not settings["api_key"] or not settings["api_secret"]:
+        return jsonify({"ok": False, "error": "Add your Delta API key/secret in Settings first", "trades": []})
+
+    try:
+        base_url = (
+            "https://cdn-ind.testnet.deltaex.org" if settings["use_testnet"]
+            else "https://api.india.delta.exchange"
+        )
+        client = DeltaClient(base_url=base_url, api_key=settings["api_key"], api_secret=settings["api_secret"])
+        product = client.get_product(settings["symbol"])
+        fills = client.get_fills(product_id=product["id"], page_size=20)
+
+        trades = []
+        for f in fills:
+            created_raw = f.get("created_at")
+            try:
+                # Delta returns created_at as a microsecond epoch string.
+                epoch_seconds = int(created_raw) / 1_000_000 if created_raw else None
+            except (TypeError, ValueError):
+                epoch_seconds = None
+            try:
+                price = float(f.get("price", 0) or 0)
+            except (TypeError, ValueError):
+                price = 0.0
+            trades.append({
+                "time": epoch_seconds,
+                "symbol": f.get("product_symbol", settings["symbol"]),
+                "side": f.get("side"),
+                "price": price,
+                "size": f.get("size"),
+                "role": "exit" if f.get("reduce_only") else "entry",
+                "order_type": f.get("stop_order_type") or f.get("order_type") or "market",
+            })
+        # Most recent first.
+        trades.sort(key=lambda t: t["time"] or 0, reverse=True)
+        return jsonify({"ok": True, "trades": trades})
+    except DeltaAPIError as e:
+        return jsonify({"ok": False, "error": str(e), "trades": []})
+    except Exception as e:
+        return jsonify({"ok": False, "error": f"Unexpected error: {e}", "trades": []})
+
+
 # ----------------------------------------------------------------------
 # API: logs (per-user, polling-based tail)
 # ----------------------------------------------------------------------
