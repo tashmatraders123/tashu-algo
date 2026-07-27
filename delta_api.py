@@ -109,18 +109,21 @@ class DeltaClient:
                 return t
         raise DeltaAPIError(f"Symbol {symbol} not found in tickers")
 
-    def get_tickers(self, symbols=None):
+    def get_tickers_bulk(self, symbols):
         """
-        Public endpoint. Returns ticker data for all products, or just the
-        given list of symbols if provided. Used for the live scrolling
-        price ticker on the dashboard.
+        Fetches ALL tickers in a single request and returns a
+        {symbol: ticker_dict} map for just the requested symbols. Used by
+        the live price ticker-tape so it doesn't fire one request per
+        coin every refresh.
         """
         data = self._request("GET", "/v2/tickers", auth=False)
-        results = data.get("result", [])
-        if symbols:
-            wanted = set(symbols)
-            results = [t for t in results if t.get("symbol") in wanted]
-        return results
+        wanted = set(symbols)
+        out = {}
+        for t in data.get("result", []):
+            sym = t.get("symbol")
+            if sym in wanted:
+                out[sym] = t
+        return out
 
     def get_candles(self, symbol, resolution, start, end):
         """
@@ -159,27 +162,40 @@ class DeltaClient:
         data = self._request("GET", "/v2/positions/margined", params=params, auth=True)
         return data["result"]
 
-    def get_position_snapshot(self, product_id):
-        """
-        Delta's position record includes 'realized_pnl' and 'commission'
-        directly -- even at zero size, immediately after a close, it
-        still reflects the just-closed trade. Used to get the ACTUAL
-        realized P&L and fees instead of estimating from entry/exit price.
-        Returns None if no record is found for this product.
-        """
-        positions = self.get_positions(product_id)
-        if isinstance(positions, dict):
-            positions = [positions]
-        for p in positions:
-            if p.get("product_id") == product_id:
-                return p
-        return positions[0] if positions else None
-
     def set_leverage(self, product_id, leverage):
         body = {"leverage": str(leverage)}
         return self._request(
             "POST", f"/v2/products/{product_id}/orders/leverage", body=body, auth=True
         )
+
+    def get_open_orders(self, product_id=None):
+        """
+        Returns the list of currently open orders (including the
+        stop-loss / take-profit legs of an attached bracket, which show
+        up as separate orders with stop_order_type == "stop_loss_order"
+        / "take_profit_order"). Used by the dashboard to display the real
+        SL/TP prices guarding an open position, rather than re-deriving
+        them from the strategy math.
+        """
+        params = {"state": "open"}
+        if product_id:
+            params["product_id"] = product_id
+        data = self._request("GET", "/v2/orders", params=params, auth=True)
+        return data.get("result", [])
+
+    def get_fills(self, product_id=None, page_size=20):
+        """
+        Real executed trade fills straight from the exchange -- used for
+        the dashboard's "Recent Trades" list. This is the source of
+        truth for what actually happened (entries, SL hits, TP hits,
+        manual trades), rather than re-deriving trade history from the
+        bot's own log lines.
+        """
+        params = {"page_size": str(page_size)}
+        if product_id:
+            params["product_id"] = product_id
+        data = self._request("GET", "/v2/fills", params=params, auth=True)
+        return data.get("result", [])
 
     # ------------------------------------------------------------------
     # Orders
