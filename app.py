@@ -9,8 +9,6 @@ group of people you personally trust with the link to this site --
 anyone who can reach it can create an account. Do not publicize the URL
 widely without adding stronger access control first.
 """
-import io
-import json
 import os
 import secrets
 import subprocess
@@ -19,10 +17,9 @@ import threading
 import time
 from functools import wraps
 
-from flask import Flask, jsonify, request, session, redirect, url_for, render_template, send_file
+from flask import Flask, jsonify, request, session, redirect, url_for, render_template
 
 import config
-import support
 import users
 from delta_api import DeltaClient, DeltaAPIError
 
@@ -32,12 +29,12 @@ SECRET_KEY_PATH = os.path.join(BASE_DIR, "secret.key")
 
 COMMON_SYMBOLS = [
     "BTCUSD", "ETHUSD", "SOLUSD", "XRPUSD", "DOGEUSD",
-    "ADAUSD", "POLUSD", "LTCUSD", "BNBUSD", "AVAXUSD",
+    "ADAUSD", "MATICUSD", "LTCUSD", "BNBUSD", "AVAXUSD",
 ]
 
 app = Flask(
     __name__,
-    static_folder=os.path.join(BASE_DIR, "web"),
+    static_folder=os.path.join(BASE_DIR, "static"),
     static_url_path="/static",
     template_folder=os.path.join(BASE_DIR, "templates"),
 )
@@ -55,6 +52,13 @@ else:
 # username -> {"process": Popen, "stop_requested_at": float|None}
 _bot_processes = {}
 _processes_lock = threading.Lock()
+
+# Tiny shared cache for the public live-price ticker tape, so ten browser
+# tabs polling every few seconds don't turn into ten upstream requests.
+_ticker_cache = {"at": 0.0, "data": []}
+_ticker_lock = threading.Lock()
+TICKER_CACHE_SECONDS = 3
+TICKER_SYMBOLS = COMMON_SYMBOLS
 
 
 def login_required(f):
@@ -102,18 +106,19 @@ def user_paths(username):
 @app.route("/register", methods=["GET", "POST"])
 def register_page():
     if request.method == "GET":
-        return render_template("register.html", error=None)
-    username = request.form.get("username", "")
-    email = request.form.get("email", "")
+        return render_template("register.html", error=None, form={})
+    username = request.form.get("username", "").strip()
+    email = request.form.get("email", "").strip()
     password = request.form.get("password", "")
     confirm_password = request.form.get("confirm_password", "")
+    form = {"username": username, "email": email}
 
     if password != confirm_password:
-        return render_template("register.html", error="Passwords do not match")
+        return render_template("register.html", error="Passwords do not match", form=form)
 
     ok, error = users.create_user(username, password, email=email)
     if not ok:
-        return render_template("register.html", error=error)
+        return render_template("register.html", error=error, form=form)
     if users.is_admin(username.strip().lower()):
         # first-ever user, auto-approved as admin
         session["username"] = username.strip().lower()
@@ -129,8 +134,13 @@ def register_page():
 def login_page():
     if request.method == "GET":
         return render_template("login.html", error=None)
-    username = request.form.get("username", "")
+    identifier = request.form.get("identifier", request.form.get("username", "")).strip()
     password = request.form.get("password", "")
+
+    # Let people log in with either their username or their email.
+    username = users.get_username_by_email(identifier) if "@" in identifier else identifier
+    username = username or identifier
+
     ok, reason = users.verify_login(username, password)
     if ok:
         session["username"] = username.strip().lower()
@@ -143,7 +153,7 @@ def login_page():
         return render_template(
             "login.html", error="Your access has been suspended. Contact the admin for details."
         )
-    return render_template("login.html", error="Incorrect username or password")
+    return render_template("login.html", error="Incorrect username/email or password")
 
 
 @app.route("/logout")
@@ -155,12 +165,22 @@ def logout():
 @app.route("/")
 @login_required
 def dashboard():
+    username = session["username"]
+    settings = users.get_settings(username)
     return render_template(
         "index.html",
-        username=session["username"],
+        username=username,
+        email=users.get_email(username),
         common_symbols=COMMON_SYMBOLS,
-        is_admin=users.is_admin(session["username"]),
+        is_admin=users.is_admin(username),
+        has_api_keys=bool(settings["api_key"] and settings["api_secret"]),
+        api_key_masked=users.mask_secret(settings["api_key"]),
     )
+
+
+@app.route("/contact")
+def contact_page():
+    return render_template("contact.html", logged_in=("username" in session))
 
 
 @app.route("/admin")
@@ -245,13 +265,88 @@ def api_status():
     })
 
 
+@app.route("/api/algo")
+@login_required
+def api_algo():
+    """Read-only summary of the strategy/risk config, for the dashboard's
+    'Algorithm' card. This is the same config every user's bot process
+    reads from .env / config.py -- it's shared, not per-user."""
+    return jsonify({
+        "ok": True,
+        "mode": config.STRATEGY_MODE,
+        "resolution": config.RESOLUTION,
+        "ema_fast": config.EMA_FAST,
+        "ema_slow": config.EMA_SLOW,
+        "rsi_period": config.RSI_PERIOD,
+        "rsi_long_range": [config.RSI_LONG_MIN, config.RSI_LONG_MAX],
+        "rsi_short_range": [config.RSI_SHORT_MIN, config.RSI_SHORT_MAX],
+        "atr_period": config.ATR_PERIOD,
+        "sl_atr_mult": config.SL_ATR_MULT,
+        "tp_rr_mult": getattr(config, "TP_RR_MULT", 2.0),
+        "risk_per_trade_pct": config.RISK_PER_TRADE_PCT,
+        "leverage": config.LEVERAGE,
+        "max_daily_loss_pct": config.MAX_DAILY_LOSS_PCT,
+        "cooldown_seconds": config.COOLDOWN_SECONDS,
+    })
+
+
+@app.route("/api/ticker")
+@login_required
+def api_ticker():
+    """Public, no-API-key-required live prices for the scrolling ticker
+    tape. Cached for a few seconds and shared across everyone logged in,
+    so it stays live without hammering the exchange."""
+    now = time.time()
+    with _ticker_lock:
+        if now - _ticker_cache["at"] < TICKER_CACHE_SECONDS and _ticker_cache["data"]:
+            return jsonify({"ok": True, "tickers": _ticker_cache["data"]})
+
+    try:
+        client = DeltaClient(base_url=config.MARKET_DATA_BASE_URL, api_key="", api_secret="")
+        raw = client.get_tickers_bulk(TICKER_SYMBOLS)
+        tickers = []
+        for symbol in TICKER_SYMBOLS:
+            t = raw.get(symbol)
+            if not t:
+                continue
+            try:
+                close = float(t.get("close", 0) or 0)
+                change_pct = t.get("mark_change_24h")
+                change_pct = float(change_pct) if change_pct not in (None, "") else None
+            except (TypeError, ValueError):
+                close, change_pct = 0.0, None
+            tickers.append({"symbol": symbol, "price": close, "change_pct": change_pct})
+        with _ticker_lock:
+            _ticker_cache["at"] = now
+            _ticker_cache["data"] = tickers
+        return jsonify({"ok": True, "tickers": tickers})
+    except DeltaAPIError as e:
+        # Serve the last known prices rather than a blank ticker tape.
+        if _ticker_cache["data"]:
+            return jsonify({"ok": True, "tickers": _ticker_cache["data"], "stale": True})
+        return jsonify({"ok": False, "error": str(e), "tickers": []})
+    except Exception as e:
+        if _ticker_cache["data"]:
+            return jsonify({"ok": True, "tickers": _ticker_cache["data"], "stale": True})
+        return jsonify({"ok": False, "error": f"Unexpected error: {e}", "tickers": []})
+
+
 @app.route("/api/account")
 @login_required
 def api_account():
+    """Live 'Position & Trade Details' data: balance, the open position
+    (if any) with its real entry/mark/SL/TP/PnL, and whether the bot is
+    currently running -- everything the dashboard needs to show a clean,
+    single, structured trade panel instead of a raw log."""
     username = session["username"]
     settings = users.get_settings(username)
+    with _processes_lock:
+        entry = _bot_processes.get(username)
+        running = entry is not None and entry["process"].poll() is None
+
     if not settings["api_key"] or not settings["api_secret"]:
-        return jsonify({"ok": False, "error": "Add your Delta API key/secret in Settings first"})
+        return jsonify({"ok": False, "error": "Add your Delta API key/secret in Settings first", "running": running})
+
     try:
         base_url = (
             "https://cdn-ind.testnet.deltaex.org" if settings["use_testnet"]
@@ -260,379 +355,75 @@ def api_account():
         client = DeltaClient(base_url=base_url, api_key=settings["api_key"], api_secret=settings["api_secret"])
         balance = client.get_available_balance()
         product = client.get_product(settings["symbol"])
-        positions = client.get_positions(product["id"])
+        product_id = product["id"]
+
+        positions = client.get_positions(product_id)
         if isinstance(positions, dict):
             positions = [positions]
+
         open_position = None
         for p in positions:
-            if float(p.get("size", 0) or 0) != 0:
+            size = float(p.get("size", 0) or 0)
+            if size != 0:
+                direction = "long" if size > 0 else "short"
+                entry_price = float(p.get("entry_price", 0) or 0)
+                unrealized_pnl = float(p.get("unrealized_pnl", 0) or 0)
+
+                # Current mark/last price, for a live PnL% and mark line.
+                try:
+                    mark_price = float(client.get_ticker(settings["symbol"]).get("close", entry_price))
+                except DeltaAPIError:
+                    mark_price = entry_price
+
+                # Pull the real attached SL/TP off the open orders, rather
+                # than re-deriving them -- this is what's actually
+                # protecting the position on the exchange right now.
+                stop_loss, take_profit = None, None
+                try:
+                    for o in client.get_open_orders(product_id):
+                        stop_type = o.get("stop_order_type")
+                        price = o.get("stop_price")
+                        if stop_type == "stop_loss_order" and price is not None:
+                            stop_loss = float(price)
+                        elif stop_type == "take_profit_order" and price is not None:
+                            take_profit = float(price)
+                except DeltaAPIError:
+                    pass  # SL/TP just won't be shown this cycle -- not fatal
+
+                notional = abs(size) * entry_price
+                pnl_pct = (unrealized_pnl / notional * 100) if notional else 0.0
+
                 open_position = {
-                    "size": p.get("size"),
-                    "entry_price": p.get("entry_price"),
-                    "unrealized_pnl": p.get("unrealized_pnl"),
+                    "symbol": settings["symbol"],
+                    "direction": direction,
+                    "size": abs(size),
+                    "entry_price": entry_price,
+                    "mark_price": mark_price,
+                    "stop_loss": stop_loss,
+                    "take_profit": take_profit,
+                    "unrealized_pnl": unrealized_pnl,
+                    "unrealized_pnl_pct": pnl_pct,
+                    "leverage": p.get("leverage") or config.LEVERAGE,
                 }
                 break
-        return jsonify({"ok": True, "balance": balance, "position": open_position})
+
+        return jsonify({
+            "ok": True,
+            "running": running,
+            "balance": balance,
+            "symbol": settings["symbol"],
+            "dry_run": settings["dry_run"],
+            "position": open_position,
+        })
     except DeltaAPIError as e:
-        return jsonify({"ok": False, "error": str(e)})
+        return jsonify({"ok": False, "error": str(e), "running": running})
     except Exception as e:
-        return jsonify({"ok": False, "error": f"Unexpected error: {e}"})
-
-
-def _read_position_state(username):
-    """Reads the bot's own tracked trade state (SL/trailing stop, stage,
-    R-tracking data) written by the running bot subprocess. Returns None
-    if the bot isn't tracking a trade or hasn't run yet."""
-    path = os.path.join(users.user_dir(username), "position_state.json")
-    if not os.path.exists(path):
-        return None
-    try:
-        with open(path, "r", encoding="utf-8") as f:
-            return json.load(f)
-    except (json.JSONDecodeError, OSError):
-        return None
-
-
-@app.route("/api/position")
-@login_required
-def api_position():
-    """
-    Rich position-details view for the dashboard: merges the LIVE position
-    straight from Delta (real entry price, size, unrealized P&L) with the
-    bot's own tracked state (current stop / trailing stage / R-distance),
-    since the exchange itself has no concept of "which stage of our
-    strategy this trade is in."
-    """
-    username = session["username"]
-    settings = users.get_settings(username)
-    state = _read_position_state(username)
-
-    result = {"ok": True, "has_position": False, "symbol": settings["symbol"]}
-
-    if not settings["api_key"] or not settings["api_secret"]:
-        result["ok"] = False
-        result["error"] = "Add your Delta API key/secret first"
-        return jsonify(result)
-
-    try:
-        base_url = (
-            "https://cdn-ind.testnet.deltaex.org" if settings["use_testnet"]
-            else "https://api.india.delta.exchange"
-        )
-        client = DeltaClient(base_url=base_url, api_key=settings["api_key"], api_secret=settings["api_secret"])
-        result["balance"] = client.get_available_balance()
-
-        product = client.get_product(settings["symbol"])
-        positions = client.get_positions(product["id"])
-        if isinstance(positions, dict):
-            positions = [positions]
-        live_position = next((p for p in positions if float(p.get("size", 0) or 0) != 0), None)
-
-        try:
-            result["current_price"] = float(client.get_ticker(settings["symbol"])["close"])
-        except DeltaAPIError:
-            result["current_price"] = None
-
-        if live_position:
-            result["has_position"] = True
-            result["side"] = "long" if float(live_position.get("size", 0)) > 0 else "short"
-            result["size"] = live_position.get("size")
-            result["entry_price"] = live_position.get("entry_price")
-            result["unrealized_pnl"] = live_position.get("unrealized_pnl")
-        elif state:
-            # Dry-run / just-filled timing gap: bot is tracking a trade the
-            # exchange hasn't reflected yet (or never will, in dry-run).
-            result["has_position"] = True
-            result["side"] = state.get("direction")
-            result["size"] = state.get("size")
-            result["entry_price"] = state.get("entry_price")
-            result["unrealized_pnl"] = None
-
-        if state:
-            result["stage"] = state.get("stage")
-            result["current_stop"] = state.get("current_stop")
-            result["sl_distance"] = state.get("sl_distance")
-            result["opened_at"] = state.get("opened_at")
-
-            sl_dist = state.get("sl_distance")
-            entry = result.get("entry_price")
-            cur = result.get("current_price")
-            direction = result.get("side")
-            if sl_dist and entry is not None and cur is not None and direction:
-                try:
-                    entry_f, cur_f = float(entry), float(cur)
-                    if direction == "long":
-                        result["r_multiple"] = (cur_f - entry_f) / sl_dist
-                    else:
-                        result["r_multiple"] = (entry_f - cur_f) / sl_dist
-                except (TypeError, ZeroDivisionError):
-                    pass
-
-        return jsonify(result)
-    except DeltaAPIError as e:
-        result["ok"] = False
-        result["error"] = str(e)
-        return jsonify(result)
-    except Exception as e:
-        result["ok"] = False
-        result["error"] = f"Unexpected error: {e}"
-        return jsonify(result)
-
-
-_market_data_client = None
-
-
-def _get_market_data_client():
-    global _market_data_client
-    if _market_data_client is None:
-        _market_data_client = DeltaClient(base_url=config.MARKET_DATA_BASE_URL, api_key="", api_secret="")
-    return _market_data_client
-
-
-@app.route("/api/market-ticker")
-@login_required
-def api_market_ticker():
-    """Live prices for the scrolling ticker strip. Public market data --
-    same for every user, no personal API keys involved."""
-    try:
-        client = _get_market_data_client()
-        tickers = client.get_tickers(COMMON_SYMBOLS)
-        out = [
-            {"symbol": t.get("symbol"), "price": t.get("close")}
-            for t in tickers if t.get("close") is not None
-        ]
-        matched = {t["symbol"] for t in out}
-        missing = [s for s in COMMON_SYMBOLS if s not in matched]
-        if missing:
-            app.logger.warning("Ticker symbols not found on Delta: %s", missing)
-        return jsonify({"ok": True, "tickers": out, "fetched_at": int(time.time()), "missing": missing})
-    except DeltaAPIError as e:
-        return jsonify({"ok": False, "error": str(e)})
-    except Exception as e:
-        return jsonify({"ok": False, "error": f"Unexpected error: {e}"})
+        return jsonify({"ok": False, "error": f"Unexpected error: {e}", "running": running})
 
 
 # ----------------------------------------------------------------------
-# API: trade history + Excel export
+# API: logs (per-user, polling-based tail)
 # ----------------------------------------------------------------------
-def _read_trade_history(username):
-    path = os.path.join(users.user_dir(username), "trade_history.json")
-    if not os.path.exists(path):
-        return []
-    try:
-        with open(path, "r", encoding="utf-8") as f:
-            return json.load(f)
-    except (json.JSONDecodeError, OSError):
-        return []
-
-
-@app.route("/api/trades")
-@login_required
-def api_trades():
-    username = session["username"]
-    history = _read_trade_history(username)
-    # Most recent first, capped for the dashboard panel (export gets everything).
-    recent = list(reversed(history))[:25]
-    return jsonify({"ok": True, "trades": recent})
-
-
-@app.route("/api/trades/all")
-@login_required
-def api_trades_all():
-    """
-    Full trade history (not capped at 25), optionally filtered to a date
-    range via ?from=<unix_ts>&to=<unix_ts>. Backs the dedicated Trade
-    History page so trades from any day are always reachable, not just
-    whatever fits in the dashboard's Recent Trades panel.
-    """
-    username = session["username"]
-    history = _read_trade_history(username)
-    from_ts = request.args.get("from", type=int)
-    to_ts = request.args.get("to", type=int)
-    if from_ts is not None:
-        history = [t for t in history if (t.get("closed_at") or 0) >= from_ts]
-    if to_ts is not None:
-        history = [t for t in history if (t.get("closed_at") or 0) <= to_ts]
-    return jsonify({"ok": True, "trades": list(reversed(history))})
-
-
-@app.route("/trades")
-@login_required
-def trades_page():
-    return render_template(
-        "trade_history.html", username=session["username"],
-        is_admin=users.is_admin(session["username"]),
-    )
-
-
-@app.route("/api/market-state")
-@login_required
-def api_market_state():
-    """
-    What the bot is currently seeing in the market -- EMA relationship,
-    RSI, ATR, trend bias -- so the Position Details panel can show
-    something useful while flat instead of just "waiting for a signal."
-    Written by the bot subprocess every cycle; read-only here.
-    """
-    username = session["username"]
-    path = os.path.join(users.user_dir(username), "market_state.json")
-    if not os.path.exists(path):
-        return jsonify({"ok": True, "state": None})
-    try:
-        with open(path, "r", encoding="utf-8") as f:
-            return jsonify({"ok": True, "state": json.load(f)})
-    except (json.JSONDecodeError, OSError):
-        return jsonify({"ok": True, "state": None})
-
-
-def _build_trade_history_workbook(rows_by_user):
-    """
-    rows_by_user: dict of username -> list of trade dicts (as recorded by
-    the bot). Builds an .xlsx in memory with one sheet per user plus a
-    combined "All Trades" summary sheet with a totals row using a real
-    SUM formula (not a hardcoded number) so it recalculates if edited.
-    """
-    import openpyxl
-    from openpyxl.styles import Font, Alignment
-    from openpyxl.utils import get_column_letter
-
-    HEADER_FONT = Font(name="Arial", bold=True, color="FFFFFF")
-    HEADER_FILL_COLOR = "1F2430"
-    BODY_FONT = Font(name="Arial")
-    CURRENCY_FMT = '$#,##0.00;($#,##0.00);-'
-
-    columns = [
-        ("Closed At", "closed_at"), ("Opened At", "opened_at"), ("Symbol", "symbol"),
-        ("Direction", "direction"), ("Entry Price", "entry_price"), ("Exit Price", "exit_price"),
-        ("Size", "size"), ("Stage at Close", "stage_at_close"), ("Close Reason", "close_reason"),
-        ("Realized P&L (est.)", "realized_pnl_estimate"),
-    ]
-
-    def fmt_ts(ts):
-        if ts is None:
-            return None
-        try:
-            from datetime import datetime
-            return datetime.utcfromtimestamp(int(ts)).strftime("%Y-%m-%d %H:%M:%S UTC")
-        except (ValueError, TypeError):
-            return None
-
-    def write_sheet(ws, rows):
-        for col_idx, (label, _) in enumerate(columns, start=1):
-            cell = ws.cell(row=1, column=col_idx, value=label)
-            cell.font = HEADER_FONT
-            cell.fill = openpyxl.styles.PatternFill("solid", fgColor=HEADER_FILL_COLOR)
-            cell.alignment = Alignment(horizontal="center")
-        r = 2
-        pnl_col = None
-        for col_idx, (label, key) in enumerate(columns, start=1):
-            if key == "realized_pnl_estimate":
-                pnl_col = get_column_letter(col_idx)
-        for row in rows:
-            for col_idx, (label, key) in enumerate(columns, start=1):
-                value = row.get(key)
-                if key in ("closed_at", "opened_at"):
-                    value = fmt_ts(value)
-                cell = ws.cell(row=r, column=col_idx, value=value)
-                cell.font = BODY_FONT
-                if key == "realized_pnl_estimate" and value is not None:
-                    cell.number_format = CURRENCY_FMT
-            r += 1
-        if rows and pnl_col:
-            total_row = r
-            ws.cell(row=total_row, column=1, value="TOTAL").font = Font(name="Arial", bold=True)
-            total_cell = ws.cell(row=total_row, column=columns.index(("Realized P&L (est.)", "realized_pnl_estimate")) + 1)
-            total_cell.value = f"=SUM({pnl_col}2:{pnl_col}{r - 1})"
-            total_cell.font = Font(name="Arial", bold=True)
-            total_cell.number_format = CURRENCY_FMT
-        for col_idx, (label, _) in enumerate(columns, start=1):
-            ws.column_dimensions[get_column_letter(col_idx)].width = max(14, len(label) + 2)
-
-    wb = openpyxl.Workbook()
-    all_ws = wb.active
-    all_ws.title = "All Trades"
-    all_rows = []
-    for uname, rows in rows_by_user.items():
-        for row in rows:
-            all_rows.append(dict(row, username=uname))
-    all_rows.sort(key=lambda r: r.get("closed_at") or 0)
-    write_sheet(all_ws, all_rows)
-
-    for uname, rows in rows_by_user.items():
-        rows_sorted = sorted(rows, key=lambda r: r.get("closed_at") or 0)
-        sheet_name = uname[:31] or "user"  # Excel sheet name length limit
-        ws = wb.create_sheet(title=sheet_name)
-        write_sheet(ws, rows_sorted)
-
-    buf = io.BytesIO()
-    wb.save(buf)
-    buf.seek(0)
-    return buf
-
-
-@app.route("/api/trades/export")
-@login_required
-def api_trades_export():
-    """Exports the logged-in user's own trade history as an .xlsx."""
-    username = session["username"]
-    history = _read_trade_history(username)
-    buf = _build_trade_history_workbook({username: history})
-    return send_file(
-        buf, as_attachment=True,
-        download_name=f"aurelius-algo-trades-{username}.xlsx",
-        mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-    )
-
-
-@app.route("/admin/trades/export-all")
-@admin_required
-def admin_trades_export_all():
-    """Exports every user's trade history into one workbook, one sheet
-    per user plus a combined summary sheet -- for oversight of everyone
-    using the algo."""
-    rows_by_user = {}
-    for uname, _ in users.list_all_users():
-        rows_by_user[uname] = _read_trade_history(uname)
-    buf = _build_trade_history_workbook(rows_by_user)
-    return send_file(
-        buf, as_attachment=True,
-        download_name="aurelius-algo-all-trades.xlsx",
-        mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-    )
-
-
-# ----------------------------------------------------------------------
-# Admin: logs across all users (touch-friendly viewer)
-# ----------------------------------------------------------------------
-@app.route("/admin/logs")
-@admin_required
-def admin_logs_page():
-    all_usernames = [u for u, _ in users.list_all_users()]
-    return render_template(
-        "admin_logs.html", username=session["username"], all_usernames=all_usernames,
-    )
-
-
-@app.route("/admin/api/logs/<target_username>")
-@admin_required
-def admin_api_logs(target_username):
-    target_username = target_username.strip().lower()
-    if not users.user_exists(target_username):
-        return jsonify({"ok": False, "error": "No such user"}), 404
-    paths = user_paths(target_username)
-    since = request.args.get("since", default=0, type=int)
-    log_path = paths["log"]
-    if not os.path.exists(log_path):
-        return jsonify({"ok": True, "lines": [], "offset": 0})
-    size = os.path.getsize(log_path)
-    if since > size:
-        since = 0
-    with open(log_path, "r", encoding="utf-8", errors="replace") as f:
-        f.seek(since)
-        data = f.read()
-        new_offset = f.tell()
-    lines = data.splitlines() if data else []
-    return jsonify({"ok": True, "lines": lines, "offset": new_offset})
 @app.route("/api/logs")
 @login_required
 def api_logs():
@@ -742,152 +533,32 @@ def api_settings():
             "symbol": settings["symbol"],
             "fixed_size": settings["fixed_size"],
             "use_testnet": settings["use_testnet"],
+            "email": users.get_email(username),
             "api_key_masked": users.mask_secret(settings["api_key"]),
             "has_api_keys": bool(settings["api_key"] and settings["api_secret"]),
         })
 
     payload = request.get_json(force=True, silent=True) or {}
     updates = {}
-    if "api_key" in payload and payload["api_key"].strip():
-        updates["api_key"] = payload["api_key"].strip()
-    if "api_secret" in payload and payload["api_secret"].strip():
-        updates["api_secret"] = payload["api_secret"].strip()
+    new_key = str(payload.get("api_key") or "").strip()
+    new_secret = str(payload.get("api_secret") or "").strip()
+    if new_key:
+        updates["api_key"] = new_key
+    if new_secret:
+        updates["api_secret"] = new_secret
     if "use_testnet" in payload:
         updates["use_testnet"] = bool(payload["use_testnet"])
+
+    if not updates:
+        return jsonify({"ok": False, "error": "Nothing to update"}), 400
+
     users.update_settings(username, updates)
-    return jsonify({"ok": True})
-
-
-# ----------------------------------------------------------------------
-# Password changes
-# ----------------------------------------------------------------------
-@app.route("/api/change-password", methods=["POST"])
-@login_required
-def api_change_password():
-    """Self-service: any logged-in user (including the admin) can change
-    their own password, given the correct current one."""
-    username = session["username"]
-    payload = request.get_json(force=True, silent=True) or {}
-    current_password = payload.get("current_password", "")
-    new_password = payload.get("new_password", "")
-    confirm_password = payload.get("confirm_password", "")
-
-    if new_password != confirm_password:
-        return jsonify({"ok": False, "error": "New passwords do not match"}), 400
-
-    ok, error = users.change_password(username, current_password, new_password)
-    if not ok:
-        return jsonify({"ok": False, "error": error}), 400
-    return jsonify({"ok": True})
-
-
-@app.route("/admin/api/reset-password", methods=["POST"])
-@admin_required
-def admin_api_reset_password():
-    """Admin override: reset any user's password without their current
-    one, for someone who's locked out."""
-    payload = request.get_json(force=True, silent=True) or {}
-    target = payload.get("username", "").strip().lower()
-    new_password = payload.get("new_password", "")
-    confirm_password = payload.get("confirm_password", "")
-
-    if new_password != confirm_password:
-        return jsonify({"ok": False, "error": "New passwords do not match"}), 400
-
-    ok, error = users.admin_reset_password(target, new_password)
-    if not ok:
-        return jsonify({"ok": False, "error": error}), 400
-    return jsonify({"ok": True})
-
-
-# ----------------------------------------------------------------------
-# Contact support (users submit, only the admin can read the inbox)
-# ----------------------------------------------------------------------
-@app.route("/support", methods=["GET", "POST"])
-@login_required
-def support_page():
-    username = session["username"]
-    if request.method == "POST":
-        message = request.form.get("message", "")
-        ok, error = support.submit_message(username, message)
-        my_messages = support.list_messages_for_user(username)
-        return render_template(
-            "support.html", username=username,
-            is_admin=users.is_admin(username),
-            my_messages=my_messages,
-            sent=ok, error=None if ok else error,
-        )
-    my_messages = support.list_messages_for_user(username)
-    return render_template(
-        "support.html", username=username,
-        is_admin=users.is_admin(username),
-        my_messages=my_messages, sent=False, error=None,
-    )
-
-
-@app.route("/admin/support")
-@admin_required
-def admin_support_page():
-    all_messages = support.list_all_messages()
-    return render_template("admin_support.html", username=session["username"], messages=all_messages)
-
-
-@app.route("/admin/api/support/resolve", methods=["POST"])
-@admin_required
-def admin_api_support_resolve():
-    payload = request.get_json(force=True, silent=True) or {}
-    message_id = payload.get("id")
-    resolved = payload.get("resolved", True)
-    try:
-        message_id = int(message_id)
-    except (TypeError, ValueError):
-        return jsonify({"ok": False, "error": "Invalid message id"}), 400
-    ok = support.set_resolved(message_id, resolved)
-    return jsonify({"ok": ok})
-
-
-# ----------------------------------------------------------------------
-# Admin: live overview of every user (running state, mode, recent errors)
-# ----------------------------------------------------------------------
-@app.route("/admin/api/overview")
-@admin_required
-def admin_api_overview():
-    overview = []
-    unresolved_support = sum(1 for m in support.list_all_messages() if not m["resolved"])
-    for uname, data in users.list_all_users():
-        with _processes_lock:
-            entry = _bot_processes.get(uname)
-            running = entry is not None and entry["process"].poll() is None
-        settings = users.get_settings(uname)
-        paths = user_paths(uname)
-        recent_errors = 0
-        last_error_line = None
-        if os.path.exists(paths["log"]):
-            try:
-                with open(paths["log"], "r", encoding="utf-8", errors="replace") as f:
-                    # Only scan the tail of the file -- avoids reading a
-                    # potentially large log in full on every poll.
-                    f.seek(max(0, os.path.getsize(paths["log"]) - 60000))
-                    tail_lines = f.read().splitlines()
-                for line in tail_lines:
-                    if "[ERROR]" in line:
-                        recent_errors += 1
-                        last_error_line = line.strip()
-            except OSError:
-                pass
-        overview.append({
-            "username": uname,
-            "is_admin": data.get("is_admin", False),
-            "approved": data.get("approved", False),
-            "suspended": data.get("suspended", False),
-            "running": running,
-            "symbol": settings["symbol"],
-            "dry_run": settings["dry_run"],
-            "use_testnet": settings["use_testnet"],
-            "recent_errors": recent_errors,
-            "last_error": last_error_line,
-        })
-    return jsonify({"ok": True, "users": overview, "unresolved_support": unresolved_support})
+    settings = users.get_settings(username)
+    return jsonify({
+        "ok": True,
+        "api_key_masked": users.mask_secret(settings["api_key"]),
+        "has_api_keys": bool(settings["api_key"] and settings["api_secret"]),
+    })
 
 
 def _background_watchdog():

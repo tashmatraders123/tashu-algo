@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% block title %}Contact -- Delta Scalper{% endblock %}
+{% block body_class %}auth{% endblock %}
+
+{% block body %}
+<div class="auth-shell">
+  <div class="auth-card glass card" style="max-width: 440px;">
+    <div class="auth-brand">
+      <div class="glyph">&Delta;</div>
+      <div class="name">Delta Scalper<span>Trading control panel</span></div>
+    </div>
+
+    <h1>Get in touch</h1>
+    <p class="auth-sub">Questions, bugs, or feature requests -- reach out any of these ways.</p>
+
+    <div class="contact-row">
+      <div class="icon">&#9993;</div>
+      <div class="txt"><div class="k">Email</div><div class="v">tashu.gaur@example.com</div></div>
+    </div>
+    <div class="contact-row">
+      <div class="icon">&#128172;</div>
+      <div class="txt"><div class="k">Telegram</div><div class="v">@tashugaur</div></div>
+    </div>
+    <div class="contact-row">
+      <div class="icon">&#128187;</div>
+      <div class="txt"><div class="k">GitHub</div><div class="v">github.com/tashugaur</div></div>
+    </div>
+
+    <div class="auth-foot">
+      {% if logged_in %}
+        <a href="{{ url_for('dashboard') }}">&larr; Back to dashboard</a>
+      {% else %}
+        <a href="{{ url_for('login_page') }}">&larr; Back to sign in</a>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}

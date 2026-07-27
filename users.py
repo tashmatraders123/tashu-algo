@@ -14,6 +14,7 @@ small trusted group.
 """
 import json
 import os
+import re
 import threading
 
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -23,6 +24,15 @@ USERS_PATH = os.path.join(BASE_DIR, "users.json")
 USER_DATA_DIR = os.path.join(BASE_DIR, "user_data")
 
 _lock = threading.Lock()
+
+# Deliberately simple (not RFC-5322-perfect) -- good enough to catch typos
+# like a missing "@" or domain without rejecting real, unusual addresses.
+EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
+
+
+def is_valid_email(email):
+    return bool(email) and bool(EMAIL_RE.match(email.strip()))
+
 
 DEFAULT_SETTINGS = {
     "api_key": "",
@@ -52,18 +62,23 @@ def user_exists(username):
 
 def create_user(username, password, email=""):
     username = username.strip().lower()
+    email = email.strip().lower()
     if not username or not password:
         return False, "Username and password are required"
+    if not email or not is_valid_email(email):
+        return False, "Enter a valid email address"
     if len(password) < 6:
         return False, "Password must be at least 6 characters"
     with _lock:
         users = _load()
         if username in users:
             return False, "That username is already taken"
+        if any(data.get("email", "").lower() == email for data in users.values()):
+            return False, "An account with that email already exists"
         is_first_user = len(users) == 0
         users[username] = {
             "password_hash": generate_password_hash(password),
-            "email": email.strip(),
+            "email": email,
             "settings": dict(DEFAULT_SETTINGS),
             # The very first account ever created becomes the admin and is
             # auto-approved. Everyone after that needs the admin to approve
@@ -78,6 +93,24 @@ def create_user(username, password, email=""):
         _save(users)
     os.makedirs(os.path.join(USER_DATA_DIR, username), exist_ok=True)
     return True, None
+
+
+def get_username_by_email(email):
+    """Case-insensitive lookup so people can log in with their email too."""
+    email = (email or "").strip().lower()
+    if not email:
+        return None
+    users = _load()
+    for uname, data in users.items():
+        if data.get("email", "").lower() == email:
+            return uname
+    return None
+
+
+def get_email(username):
+    users = _load()
+    user = users.get(username.strip().lower())
+    return user.get("email", "") if user else ""
 
 
 def verify_login(username, password):
@@ -156,36 +189,6 @@ def unsuspend_user(username):
         users[username]["suspended"] = False
         _save(users)
     return True
-
-
-def change_password(username, current_password, new_password):
-    """Self-service password change: requires the correct current password."""
-    username = username.strip().lower()
-    if len(new_password) < 6:
-        return False, "New password must be at least 6 characters"
-    with _lock:
-        users = _load()
-        user = users.get(username)
-        if not user or not check_password_hash(user["password_hash"], current_password):
-            return False, "Current password is incorrect"
-        user["password_hash"] = generate_password_hash(new_password)
-        _save(users)
-    return True, None
-
-
-def admin_reset_password(username, new_password):
-    """Admin override: resets a user's password without needing the old
-    one -- for when someone is locked out."""
-    username = username.strip().lower()
-    if len(new_password) < 6:
-        return False, "New password must be at least 6 characters"
-    with _lock:
-        users = _load()
-        if username not in users:
-            return False, "No such user"
-        users[username]["password_hash"] = generate_password_hash(new_password)
-        _save(users)
-    return True, None
 
 
 def reject_user(username):

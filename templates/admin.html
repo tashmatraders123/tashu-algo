@@ -1,241 +1,112 @@
 {% extends "base.html" %}
-{% block title %}Admin — Aurelius Algo{% endblock %}
+{% block title %}Admin -- Delta Scalper{% endblock %}
+{% block body_class %}app{% endblock %}
+
 {% block body %}
-
-<nav class="topnav">
-  <div class="brand">
-    {{ coin_glyph(28) }}
-    <span class="wordmark" style="font-size:17px;">Aurelius<span> Algo</span></span>
+<header class="topbar">
+  <div class="topbar-left">
+    <div class="glyph">&Delta;</div>
+    <div class="brand-name">Delta Scalper<span class="sub">Admin</span></div>
   </div>
-  <div class="nav-right">
-    <span class="user">{{ username }}</span>
+  <nav class="nav-links">
     <a href="{{ url_for('dashboard') }}">Dashboard</a>
-    <a href="{{ url_for('logout') }}">Log out</a>
-  </div>
-</nav>
-
-<div class="page-header">
-  <h1>Admin</h1>
-  <p>Everything about who's using Aurelius Algo, in one place.</p>
-</div>
-
-<div class="dash" style="grid-template-columns: 1fr;">
-  <div class="panel">
-    <div class="btn-row">
-      <a href="{{ url_for('admin_logs_page') }}" class="btn btn-ghost">View All User Logs</a>
-      <a href="{{ url_for('admin_support_page') }}" class="btn btn-ghost" id="support-inbox-link">Support Inbox</a>
-      <a href="{{ url_for('admin_trades_export_all') }}" class="btn btn-ghost">Export All Trades to Excel</a>
+    <a href="{{ url_for('admin_page') }}">Admin</a>
+    <button type="button" class="nav-link" data-open-contact>Contact</button>
+  </nav>
+  <div class="topbar-right">
+    <div class="user-chip">
+      <div class="avatar">{{ username[0]|upper }}</div>
+      <span>{{ username }}</span>
     </div>
+    <a href="{{ url_for('logout') }}" class="btn btn-ghost btn-sm">Log out</a>
   </div>
+</header>
 
-  <div class="panel">
-    <div class="panel-title">Live Overview</div>
-    <table class="simple" id="overview-table">
-      <thead><tr><th>Username</th><th>Bot</th><th>Coin</th><th>Mode</th><th>Errors (recent)</th></tr></thead>
-      <tbody id="overview-tbody">
-        <tr class="empty-row"><td colspan="5">Loading…</td></tr>
-      </tbody>
-    </table>
-  </div>
-
-  <div class="panel">
-    <div class="panel-title">Pending Approval</div>
-    <table class="simple">
-      <thead><tr><th>Username</th><th style="width:1%;"></th></tr></thead>
-      <tbody>
-        {% for u in pending %}
-        <tr>
-          <td>{{ u }}</td>
-          <td>
-            <div class="btn-row">
-              <form method="POST" action="{{ url_for('admin_approve') }}">
-                <input type="hidden" name="username" value="{{ u }}">
-                <button type="submit" class="btn btn-teal btn-sm">Approve</button>
-              </form>
-              <form method="POST" action="{{ url_for('admin_reject') }}">
-                <input type="hidden" name="username" value="{{ u }}">
-                <button type="submit" class="btn btn-red btn-sm">Reject</button>
-              </form>
-            </div>
-          </td>
-        </tr>
-        {% else %}
-        <tr class="empty-row"><td colspan="2">No accounts waiting on approval.</td></tr>
-        {% endfor %}
-      </tbody>
-    </table>
-  </div>
-
-  <div class="panel">
-    <div class="panel-title">All Users</div>
-    <table class="simple">
-      <thead><tr><th>Username</th><th>Role</th><th>Status</th><th style="width:1%;"></th></tr></thead>
-      <tbody>
-        {% for uname, data in all_users %}
-        <tr>
-          <td>{{ uname }}</td>
-          <td>{{ "Admin" if data.is_admin else "User" }}</td>
-          <td>
-            {% if not data.approved %}
-              <span class="status-pill stopped"><span class="dot"></span>Pending</span>
-            {% elif data.suspended %}
-              <span class="status-pill stopped"><span class="dot"></span>Suspended</span>
-            {% else %}
-              <span class="status-pill running"><span class="dot"></span>Active</span>
-            {% endif %}
-          </td>
-          <td>
-            <div class="btn-row">
-              {% if not data.is_admin %}
-                {% if not data.approved %}
-                  <span class="hint">Awaiting approval above</span>
-                {% elif data.suspended %}
-                  <form method="POST" action="{{ url_for('admin_unsuspend') }}">
-                    <input type="hidden" name="username" value="{{ uname }}">
-                    <button type="submit" class="btn btn-teal btn-sm">Unsuspend</button>
-                  </form>
-                {% else %}
-                  <form method="POST" action="{{ url_for('admin_suspend') }}">
-                    <input type="hidden" name="username" value="{{ uname }}">
-                    <button type="submit" class="btn btn-red btn-sm">Suspend</button>
-                  </form>
-                {% endif %}
-              {% endif %}
-              <button class="btn btn-ghost btn-sm reset-pw-btn" data-username="{{ uname }}">Reset Password</button>
-            </div>
-          </td>
-        </tr>
-        {% else %}
-        <tr class="empty-row"><td colspan="4">No users yet.</td></tr>
-        {% endfor %}
-      </tbody>
-    </table>
+<div class="ticker-wrap">
+  <div class="ticker-track" id="ticker-track">
+    <div class="ticker-empty">Loading live prices&hellip;</div>
   </div>
 </div>
 
-<!-- Admin password reset modal -->
-<div id="reset-pw-modal-overlay" class="modal-overlay hidden">
-  <div class="modal-card">
-    <div class="panel-title">Reset Password — <span id="reset-pw-target"></span></div>
-    <div class="field">
-      <label for="reset_new_password">New Password</label>
-      <input type="password" id="reset_new_password" minlength="6">
-    </div>
-    <div class="field">
-      <label for="reset_confirm_password">Confirm New Password</label>
-      <input type="password" id="reset_confirm_password" minlength="6">
-      <div class="hint" id="reset-pw-error"></div>
-    </div>
-    <div class="btn-row">
-      <button id="btn-confirm-reset-pw" class="btn btn-gold">Reset Password</button>
-      <button id="btn-cancel-reset-pw" class="btn btn-ghost">Cancel</button>
-    </div>
+<main class="shell">
+  <div class="stack">
+
+    <section class="glass card">
+      <div class="card-title">
+        <h2><span class="eyebrow-icon"></span> Pending approval ({{ pending|length }})</h2>
+      </div>
+      {% if pending %}
+        <div class="table-wrap">
+          <table class="data-table">
+            <thead><tr><th>Username</th><th>Action</th></tr></thead>
+            <tbody>
+              {% for uname in pending %}
+                <tr>
+                  <td>{{ uname }}</td>
+                  <td class="row gap-sm">
+                    <form method="POST" action="{{ url_for('admin_approve') }}">
+                      <input type="hidden" name="username" value="{{ uname }}">
+                      <button type="submit" class="btn btn-primary btn-sm">Approve</button>
+                    </form>
+                    <form method="POST" action="{{ url_for('admin_reject') }}">
+                      <input type="hidden" name="username" value="{{ uname }}">
+                      <button type="submit" class="btn btn-danger btn-sm">Reject</button>
+                    </form>
+                  </td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      {% else %}
+        <div class="empty-note">No accounts waiting on approval.</div>
+      {% endif %}
+    </section>
+
+    <section class="glass card">
+      <div class="card-title">
+        <h2><span class="eyebrow-icon"></span> All users ({{ all_users|length }})</h2>
+      </div>
+      <div class="table-wrap">
+        <table class="data-table">
+          <thead><tr><th>Username</th><th>Email</th><th>Role</th><th>Status</th><th>Action</th></tr></thead>
+          <tbody>
+            {% for uname, data in all_users %}
+              <tr>
+                <td>{{ uname }}</td>
+                <td class="mono text-sm">{{ data.email or "--" }}</td>
+                <td>{% if data.is_admin %}<span class="badge-role admin">Admin</span>{% else %}<span class="text-muted text-sm">Member</span>{% endif %}</td>
+                <td>
+                  {% if not data.approved %}
+                    <span class="badge-role">Pending</span>
+                  {% elif data.suspended %}
+                    <span class="badge-role suspended">Suspended</span>
+                  {% else %}
+                    <span class="badge-role active">Active</span>
+                  {% endif %}
+                </td>
+                <td>
+                  {% if data.is_admin %}
+                    <span class="text-muted text-sm">--</span>
+                  {% elif data.suspended %}
+                    <form method="POST" action="{{ url_for('admin_unsuspend') }}">
+                      <input type="hidden" name="username" value="{{ uname }}">
+                      <button type="submit" class="btn btn-primary btn-sm">Unsuspend</button>
+                    </form>
+                  {% elif data.approved %}
+                    <form method="POST" action="{{ url_for('admin_suspend') }}">
+                      <input type="hidden" name="username" value="{{ uname }}">
+                      <button type="submit" class="btn btn-danger btn-sm">Suspend</button>
+                    </form>
+                  {% endif %}
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </section>
+
   </div>
-</div>
-
-{% endblock %}
-
-{% block scripts %}
-<script>
-(function () {
-  const overviewBody = document.getElementById('overview-tbody');
-  const supportLink = document.getElementById('support-inbox-link');
-
-  async function refreshOverview() {
-    try {
-      const res = await fetch('/admin/api/overview');
-      if (!res.ok) return;
-      const data = await res.json();
-      if (!data.ok) return;
-
-      if (data.unresolved_support > 0) {
-        supportLink.textContent = `Support Inbox (${data.unresolved_support} pending)`;
-      } else {
-        supportLink.textContent = 'Support Inbox';
-      }
-
-      if (!data.users.length) {
-        overviewBody.innerHTML = '<tr class="empty-row"><td colspan="5">No users yet.</td></tr>';
-        return;
-      }
-      overviewBody.innerHTML = data.users.map(u => {
-        const botPill = u.running
-          ? '<span class="status-pill running"><span class="dot"></span>Running</span>'
-          : '<span class="status-pill stopped"><span class="dot"></span>Stopped</span>';
-        const mode = u.dry_run ? 'Dry-run' : 'LIVE';
-        const modeStyle = u.dry_run ? '' : 'color:var(--red);font-weight:600;';
-        const errBadge = u.recent_errors > 0
-          ? `<span class="error-badge" title="${u.last_error ? u.last_error.replace(/"/g, '&quot;') : ''}">${u.recent_errors} error${u.recent_errors === 1 ? '' : 's'}</span>`
-          : '<span class="error-badge none">Clean</span>';
-        return `<tr>
-          <td>${u.username}${u.is_admin ? ' <span class="hint">(admin)</span>' : ''}</td>
-          <td>${botPill}</td>
-          <td>${u.symbol}</td>
-          <td style="${modeStyle}">${mode}</td>
-          <td>${errBadge}</td>
-        </tr>`;
-      }).join('');
-    } catch (e) { /* network hiccup, try again next tick */ }
-  }
-
-  refreshOverview();
-  setInterval(refreshOverview, 5000);
-
-  // Reset password modal
-  const overlay = document.getElementById('reset-pw-modal-overlay');
-  const targetLabel = document.getElementById('reset-pw-target');
-  const newPw = document.getElementById('reset_new_password');
-  const confirmPw = document.getElementById('reset_confirm_password');
-  const errEl = document.getElementById('reset-pw-error');
-  let currentTarget = null;
-
-  document.querySelectorAll('.reset-pw-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
-      currentTarget = btn.dataset.username;
-      targetLabel.textContent = currentTarget;
-      newPw.value = '';
-      confirmPw.value = '';
-      errEl.textContent = '';
-      overlay.classList.remove('hidden');
-    });
-  });
-
-  document.getElementById('btn-cancel-reset-pw').addEventListener('click', () => {
-    overlay.classList.add('hidden');
-  });
-  overlay.addEventListener('click', (e) => { if (e.target === overlay) overlay.classList.add('hidden'); });
-
-  document.getElementById('btn-confirm-reset-pw').addEventListener('click', async () => {
-    errEl.textContent = '';
-    if (newPw.value.length < 6) {
-      errEl.textContent = 'Password must be at least 6 characters.';
-      errEl.style.color = 'var(--red)';
-      return;
-    }
-    if (newPw.value !== confirmPw.value) {
-      errEl.textContent = 'Passwords do not match.';
-      errEl.style.color = 'var(--red)';
-      return;
-    }
-    try {
-      const res = await fetch('/admin/api/reset-password', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username: currentTarget, new_password: newPw.value, confirm_password: confirmPw.value }),
-      });
-      const data = await res.json();
-      if (data.ok) {
-        overlay.classList.add('hidden');
-        alert(`Password reset for ${currentTarget}.`);
-      } else {
-        errEl.textContent = data.error || 'Could not reset password.';
-        errEl.style.color = 'var(--red)';
-      }
-    } catch (e) {
-      errEl.textContent = 'Could not reach the server.';
-      errEl.style.color = 'var(--red)';
-    }
-  });
-})();
-</script>
+</main>
 {% endblock %}
