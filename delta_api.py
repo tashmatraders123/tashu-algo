@@ -143,8 +143,10 @@ class DeltaClient:
 
     def get_candles(self, symbol, resolution, start, end):
         """
-        resolution: "1", "3", "5", "15", "30", "60", "1D" etc (Delta uses these codes;
-        "1" = 1 minute).
+        resolution: one of "5s","1m","3m","5m","15m","30m","1h","2h","4h",
+        "6h","12h","1d","1w" -- these are Delta's actual accepted values
+        (confirmed against a live 'bad_schema' validation error; a bare
+        number like "5" or "15" is rejected).
         start/end: unix timestamps in seconds.
         Returns list of dicts: time, open, high, low, close, volume (oldest first).
         """
