@@ -28,6 +28,14 @@
   const floatPnl = $('float-pnl');
   const tradesTableWrap = $('trades-table-wrap');
   const btnExportTrades = $('btn-export-trades');
+  const btnChangePassword = $('btn-change-password');
+  const passwordModalOverlay = $('password-modal-overlay');
+  const currentPasswordInput = $('current_password');
+  const newPasswordInput = $('new_password');
+  const confirmNewPasswordInput = $('confirm_new_password');
+  const passwordModalError = $('password-modal-error');
+  const btnSavePassword = $('btn-save-password');
+  const btnCancelPasswordModal = $('btn-cancel-password-modal');
 
   let previousPrices = {};
 
@@ -309,6 +317,64 @@
   if (btnExportTrades) {
     btnExportTrades.addEventListener('click', () => {
       window.location.href = '/api/trades/export';
+    });
+  }
+
+  // ------------------------------------------------------------
+  // Change password modal
+  // ------------------------------------------------------------
+  function openPasswordModal() {
+    currentPasswordInput.value = '';
+    newPasswordInput.value = '';
+    confirmNewPasswordInput.value = '';
+    passwordModalError.textContent = '';
+    passwordModalOverlay.classList.remove('hidden');
+  }
+  function closePasswordModal() {
+    passwordModalOverlay.classList.add('hidden');
+  }
+
+  if (btnChangePassword) {
+    btnChangePassword.addEventListener('click', openPasswordModal);
+    btnCancelPasswordModal.addEventListener('click', closePasswordModal);
+    passwordModalOverlay.addEventListener('click', (e) => {
+      if (e.target === passwordModalOverlay) closePasswordModal();
+    });
+
+    btnSavePassword.addEventListener('click', async () => {
+      passwordModalError.textContent = '';
+      if (newPasswordInput.value.length < 6) {
+        passwordModalError.textContent = 'New password must be at least 6 characters.';
+        passwordModalError.style.color = 'var(--red)';
+        return;
+      }
+      if (newPasswordInput.value !== confirmNewPasswordInput.value) {
+        passwordModalError.textContent = 'New passwords do not match.';
+        passwordModalError.style.color = 'var(--red)';
+        return;
+      }
+      try {
+        const res = await fetch('/api/change-password', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            current_password: currentPasswordInput.value,
+            new_password: newPasswordInput.value,
+            confirm_password: confirmNewPasswordInput.value,
+          }),
+        });
+        const data = await res.json();
+        if (data.ok) {
+          closePasswordModal();
+          showToast('closed', 'Password updated', 'Use your new password next time you log in.');
+        } else {
+          passwordModalError.textContent = data.error || 'Could not update password.';
+          passwordModalError.style.color = 'var(--red)';
+        }
+      } catch (e) {
+        passwordModalError.textContent = 'Could not reach the server.';
+        passwordModalError.style.color = 'var(--red)';
+      }
     });
   }
 

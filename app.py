@@ -22,6 +22,7 @@ from functools import wraps
 from flask import Flask, jsonify, request, session, redirect, url_for, render_template, send_file
 
 import config
+import support
 import users
 from delta_api import DeltaClient, DeltaAPIError
 
@@ -706,6 +707,138 @@ def api_settings():
         updates["use_testnet"] = bool(payload["use_testnet"])
     users.update_settings(username, updates)
     return jsonify({"ok": True})
+
+
+# ----------------------------------------------------------------------
+# Password changes
+# ----------------------------------------------------------------------
+@app.route("/api/change-password", methods=["POST"])
+@login_required
+def api_change_password():
+    """Self-service: any logged-in user (including the admin) can change
+    their own password, given the correct current one."""
+    username = session["username"]
+    payload = request.get_json(force=True, silent=True) or {}
+    current_password = payload.get("current_password", "")
+    new_password = payload.get("new_password", "")
+    confirm_password = payload.get("confirm_password", "")
+
+    if new_password != confirm_password:
+        return jsonify({"ok": False, "error": "New passwords do not match"}), 400
+
+    ok, error = users.change_password(username, current_password, new_password)
+    if not ok:
+        return jsonify({"ok": False, "error": error}), 400
+    return jsonify({"ok": True})
+
+
+@app.route("/admin/api/reset-password", methods=["POST"])
+@admin_required
+def admin_api_reset_password():
+    """Admin override: reset any user's password without their current
+    one, for someone who's locked out."""
+    payload = request.get_json(force=True, silent=True) or {}
+    target = payload.get("username", "").strip().lower()
+    new_password = payload.get("new_password", "")
+    confirm_password = payload.get("confirm_password", "")
+
+    if new_password != confirm_password:
+        return jsonify({"ok": False, "error": "New passwords do not match"}), 400
+
+    ok, error = users.admin_reset_password(target, new_password)
+    if not ok:
+        return jsonify({"ok": False, "error": error}), 400
+    return jsonify({"ok": True})
+
+
+# ----------------------------------------------------------------------
+# Contact support (users submit, only the admin can read the inbox)
+# ----------------------------------------------------------------------
+@app.route("/support", methods=["GET", "POST"])
+@login_required
+def support_page():
+    username = session["username"]
+    if request.method == "POST":
+        message = request.form.get("message", "")
+        ok, error = support.submit_message(username, message)
+        my_messages = support.list_messages_for_user(username)
+        return render_template(
+            "support.html", username=username,
+            is_admin=users.is_admin(username),
+            my_messages=my_messages,
+            sent=ok, error=None if ok else error,
+        )
+    my_messages = support.list_messages_for_user(username)
+    return render_template(
+        "support.html", username=username,
+        is_admin=users.is_admin(username),
+        my_messages=my_messages, sent=False, error=None,
+    )
+
+
+@app.route("/admin/support")
+@admin_required
+def admin_support_page():
+    all_messages = support.list_all_messages()
+    return render_template("admin_support.html", username=session["username"], messages=all_messages)
+
+
+@app.route("/admin/api/support/resolve", methods=["POST"])
+@admin_required
+def admin_api_support_resolve():
+    payload = request.get_json(force=True, silent=True) or {}
+    message_id = payload.get("id")
+    resolved = payload.get("resolved", True)
+    try:
+        message_id = int(message_id)
+    except (TypeError, ValueError):
+        return jsonify({"ok": False, "error": "Invalid message id"}), 400
+    ok = support.set_resolved(message_id, resolved)
+    return jsonify({"ok": ok})
+
+
+# ----------------------------------------------------------------------
+# Admin: live overview of every user (running state, mode, recent errors)
+# ----------------------------------------------------------------------
+@app.route("/admin/api/overview")
+@admin_required
+def admin_api_overview():
+    overview = []
+    unresolved_support = sum(1 for m in support.list_all_messages() if not m["resolved"])
+    for uname, data in users.list_all_users():
+        with _processes_lock:
+            entry = _bot_processes.get(uname)
+            running = entry is not None and entry["process"].poll() is None
+        settings = users.get_settings(uname)
+        paths = user_paths(uname)
+        recent_errors = 0
+        last_error_line = None
+        if os.path.exists(paths["log"]):
+            try:
+                with open(paths["log"], "r", encoding="utf-8", errors="replace") as f:
+                    # Only scan the tail of the file -- avoids reading a
+                    # potentially large log in full on every poll.
+                    f.seek(max(0, os.path.getsize(paths["log"]) - 60000))
+                    tail_lines = f.read().splitlines()
+                for line in tail_lines:
+                    if "[ERROR]" in line:
+                        recent_errors += 1
+                        last_error_line = line.strip()
+            except OSError:
+                pass
+        overview.append({
+            "username": uname,
+            "is_admin": data.get("is_admin", False),
+            "approved": data.get("approved", False),
+            "suspended": data.get("suspended", False),
+            "running": running,
+            "symbol": settings["symbol"],
+            "dry_run": settings["dry_run"],
+            "use_testnet": settings["use_testnet"],
+            "recent_errors": recent_errors,
+            "last_error": last_error_line,
+        })
+    return jsonify({"ok": True, "users": overview, "unresolved_support": unresolved_support})
 
 
 def _background_watchdog():

@@ -10,6 +10,7 @@
   <div class="nav-right">
     <span id="status-pill" class="status-pill stopped"><span class="dot"></span>Stopped</span>
     <span class="user">{{ username }}</span>
+    <a href="{{ url_for('support_page') }}">Support</a>
     {% if is_admin %}<a href="{{ url_for('admin_page') }}">Admin</a>{% endif %}
     <a href="{{ url_for('logout') }}">Log out</a>
   </div>
@@ -70,6 +71,13 @@
         <button id="btn-change-key" class="btn btn-ghost btn-sm">Change API Key</button>
       </div>
     </div>
+
+    <div class="panel">
+      <div class="panel-title">Account</div>
+      <div class="btn-row">
+        <button id="btn-change-password" class="btn btn-ghost">Change Password</button>
+      </div>
+    </div>
   </div>
 
   <!-- Right: live position details + recent trades -->
@@ -128,6 +136,32 @@
     <div class="btn-row">
       <button id="btn-save-settings" class="btn btn-gold">Save</button>
       <button id="btn-cancel-modal" class="btn btn-ghost">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- Change password modal -->
+<div id="password-modal-overlay" class="modal-overlay hidden">
+  <div class="modal-card">
+    <div class="panel-title">Change Password</div>
+
+    <div class="field">
+      <label for="current_password">Current Password</label>
+      <input type="password" id="current_password" autocomplete="current-password">
+    </div>
+    <div class="field">
+      <label for="new_password">New Password</label>
+      <input type="password" id="new_password" minlength="6" autocomplete="new-password">
+    </div>
+    <div class="field">
+      <label for="confirm_new_password">Confirm New Password</label>
+      <input type="password" id="confirm_new_password" minlength="6" autocomplete="new-password">
+      <div class="hint" id="password-modal-error"></div>
+    </div>
+
+    <div class="btn-row">
+      <button id="btn-save-password" class="btn btn-gold">Update Password</button>
+      <button id="btn-cancel-password-modal" class="btn btn-ghost">Cancel</button>
     </div>
   </div>
 </div>

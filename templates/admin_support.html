@@ -1,0 +1,79 @@
+{% extends "base.html" %}
+{% block title %}Support Inbox — Aurelius Algo{% endblock %}
+{% block body %}
+
+<nav class="topnav">
+  <div class="brand">
+    {{ coin_glyph(28) }}
+    <span class="wordmark" style="font-size:17px;">Aurelius<span> Algo</span></span>
+  </div>
+  <div class="nav-right">
+    <span class="user">{{ username }}</span>
+    <a href="{{ url_for('admin_page') }}">Admin</a>
+    <a href="{{ url_for('dashboard') }}">Dashboard</a>
+    <a href="{{ url_for('logout') }}">Log out</a>
+  </div>
+</nav>
+
+<div class="page-header">
+  <h1>Support Inbox</h1>
+  <p>Messages from every user. Only you can see this.</p>
+</div>
+
+<div class="dash" style="grid-template-columns: 1fr;">
+  <div class="panel">
+    <div id="support-messages">
+      {% if messages %}
+        {% for m in messages %}
+        <div class="support-msg {{ 'resolved' if m.resolved else '' }}" data-id="{{ m.id }}">
+          <div class="support-msg-head">
+            <span class="support-msg-user">{{ m.username }}</span>
+            <span class="support-msg-time" data-ts="{{ m.submitted_at }}">{{ m.submitted_at }}</span>
+          </div>
+          <div class="support-msg-body">{{ m.message }}</div>
+          <div class="support-msg-actions">
+            {% if m.resolved %}
+              <span class="status-pill running"><span class="dot"></span>Resolved</span>
+              <button class="btn btn-ghost btn-sm resolve-toggle" data-id="{{ m.id }}" data-resolved="false">Mark Pending</button>
+            {% else %}
+              <span class="status-pill stopped"><span class="dot"></span>Pending</span>
+              <button class="btn btn-teal btn-sm resolve-toggle" data-id="{{ m.id }}" data-resolved="true">Mark Resolved</button>
+            {% endif %}
+          </div>
+        </div>
+        {% endfor %}
+      {% else %}
+        <div class="empty-state">No support messages yet.</div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function () {
+  document.querySelectorAll('.support-msg-time').forEach(el => {
+    const ts = parseInt(el.dataset.ts, 10);
+    if (ts) el.textContent = new Date(ts * 1000).toLocaleString();
+  });
+
+  document.querySelectorAll('.resolve-toggle').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const id = btn.dataset.id;
+      const resolved = btn.dataset.resolved === 'true';
+      try {
+        const res = await fetch('/admin/api/support/resolve', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id: id, resolved: resolved }),
+        });
+        const data = await res.json();
+        if (data.ok) window.location.reload();
+      } catch (e) { /* ignore */ }
+    });
+  });
+})();
+</script>
+{% endblock %}

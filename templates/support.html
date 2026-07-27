@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+{% block title %}Contact Support — Aurelius Algo{% endblock %}
+{% block body %}
+
+<nav class="topnav">
+  <div class="brand">
+    {{ coin_glyph(28) }}
+    <span class="wordmark" style="font-size:17px;">Aurelius<span> Algo</span></span>
+  </div>
+  <div class="nav-right">
+    <span class="user">{{ username }}</span>
+    <a href="{{ url_for('dashboard') }}">Dashboard</a>
+    {% if is_admin %}<a href="{{ url_for('admin_page') }}">Admin</a>{% endif %}
+    <a href="{{ url_for('logout') }}">Log out</a>
+  </div>
+</nav>
+
+<div class="page-header">
+  <h1>Contact Support</h1>
+  <p>Send a message to the admin. Only the admin can see what you submit here.</p>
+</div>
+
+<div class="dash" style="grid-template-columns: 1fr;">
+  <div class="panel">
+    {% if sent %}
+      <div class="alert alert-info">Message sent. The admin will follow up if needed.</div>
+    {% endif %}
+    {% if error %}
+      <div class="alert alert-error">{{ error }}</div>
+    {% endif %}
+
+    <form method="POST" action="{{ url_for('support_page') }}">
+      <div class="field">
+        <label for="message">Message</label>
+        <textarea id="message" name="message" rows="5" placeholder="Describe the issue or question..." required
+          style="width:100%; padding:12px 14px; border-radius:9px; border:1px solid var(--hairline); background:var(--bg-elev); color:var(--text); font-family:'Inter',sans-serif; font-size:14.5px; box-shadow:var(--shadow-pressed); resize:vertical;"></textarea>
+      </div>
+      <button type="submit" class="btn btn-gold">Send Message</button>
+    </form>
+  </div>
+
+  <div class="panel">
+    <div class="panel-title">Your Past Messages</div>
+    {% if my_messages %}
+    <table class="simple">
+      <thead><tr><th>Sent</th><th>Message</th><th>Status</th></tr></thead>
+      <tbody>
+        {% for m in my_messages %}
+        <tr>
+          <td style="white-space:nowrap;">{{ m.submitted_at }}</td>
+          <td>{{ m.message }}</td>
+          <td>
+            {% if m.resolved %}
+              <span class="status-pill running"><span class="dot"></span>Resolved</span>
+            {% else %}
+              <span class="status-pill stopped"><span class="dot"></span>Pending</span>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+      <div class="empty-state">No messages sent yet.</div>
+    {% endif %}
+  </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+  // Format the raw unix timestamps in the table above into local time.
+  document.querySelectorAll('table.simple td').forEach(td => {
+    const raw = td.textContent.trim();
+    if (/^\d{9,}$/.test(raw)) {
+      td.textContent = new Date(parseInt(raw, 10) * 1000).toLocaleString();
+    }
+  });
+</script>
+{% endblock %}

@@ -158,6 +158,36 @@ def unsuspend_user(username):
     return True
 
 
+def change_password(username, current_password, new_password):
+    """Self-service password change: requires the correct current password."""
+    username = username.strip().lower()
+    if len(new_password) < 6:
+        return False, "New password must be at least 6 characters"
+    with _lock:
+        users = _load()
+        user = users.get(username)
+        if not user or not check_password_hash(user["password_hash"], current_password):
+            return False, "Current password is incorrect"
+        user["password_hash"] = generate_password_hash(new_password)
+        _save(users)
+    return True, None
+
+
+def admin_reset_password(username, new_password):
+    """Admin override: resets a user's password without needing the old
+    one -- for when someone is locked out."""
+    username = username.strip().lower()
+    if len(new_password) < 6:
+        return False, "New password must be at least 6 characters"
+    with _lock:
+        users = _load()
+        if username not in users:
+            return False, "No such user"
+        users[username]["password_hash"] = generate_password_hash(new_password)
+        _save(users)
+    return True, None
+
+
 def reject_user(username):
     """Rejects (deletes) a pending account. Does not touch approved users."""
     username = username.strip().lower()

@@ -16,15 +16,26 @@
 
 <div class="page-header">
   <h1>Admin</h1>
-  <p>Approve, suspend, or restore access for anyone using Aurelius Algo.</p>
+  <p>Everything about who's using Aurelius Algo, in one place.</p>
 </div>
 
 <div class="dash" style="grid-template-columns: 1fr;">
   <div class="panel">
     <div class="btn-row">
       <a href="{{ url_for('admin_logs_page') }}" class="btn btn-ghost">View All User Logs</a>
+      <a href="{{ url_for('admin_support_page') }}" class="btn btn-ghost" id="support-inbox-link">Support Inbox</a>
       <a href="{{ url_for('admin_trades_export_all') }}" class="btn btn-ghost">Export All Trades to Excel</a>
     </div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-title">Live Overview</div>
+    <table class="simple" id="overview-table">
+      <thead><tr><th>Username</th><th>Bot</th><th>Coin</th><th>Mode</th><th>Errors (recent)</th></tr></thead>
+      <tbody id="overview-tbody">
+        <tr class="empty-row"><td colspan="5">Loading…</td></tr>
+      </tbody>
+    </table>
   </div>
 
   <div class="panel">
@@ -74,21 +85,24 @@
             {% endif %}
           </td>
           <td>
-            {% if data.is_admin %}
-              <span class="hint">—</span>
-            {% elif not data.approved %}
-              <span class="hint">Awaiting approval above</span>
-            {% elif data.suspended %}
-              <form method="POST" action="{{ url_for('admin_unsuspend') }}">
-                <input type="hidden" name="username" value="{{ uname }}">
-                <button type="submit" class="btn btn-teal btn-sm">Unsuspend</button>
-              </form>
-            {% else %}
-              <form method="POST" action="{{ url_for('admin_suspend') }}">
-                <input type="hidden" name="username" value="{{ uname }}">
-                <button type="submit" class="btn btn-red btn-sm">Suspend</button>
-              </form>
-            {% endif %}
+            <div class="btn-row">
+              {% if not data.is_admin %}
+                {% if not data.approved %}
+                  <span class="hint">Awaiting approval above</span>
+                {% elif data.suspended %}
+                  <form method="POST" action="{{ url_for('admin_unsuspend') }}">
+                    <input type="hidden" name="username" value="{{ uname }}">
+                    <button type="submit" class="btn btn-teal btn-sm">Unsuspend</button>
+                  </form>
+                {% else %}
+                  <form method="POST" action="{{ url_for('admin_suspend') }}">
+                    <input type="hidden" name="username" value="{{ uname }}">
+                    <button type="submit" class="btn btn-red btn-sm">Suspend</button>
+                  </form>
+                {% endif %}
+              {% endif %}
+              <button class="btn btn-ghost btn-sm reset-pw-btn" data-username="{{ uname }}">Reset Password</button>
+            </div>
           </td>
         </tr>
         {% else %}
@@ -99,4 +113,129 @@
   </div>
 </div>
 
+<!-- Admin password reset modal -->
+<div id="reset-pw-modal-overlay" class="modal-overlay hidden">
+  <div class="modal-card">
+    <div class="panel-title">Reset Password — <span id="reset-pw-target"></span></div>
+    <div class="field">
+      <label for="reset_new_password">New Password</label>
+      <input type="password" id="reset_new_password" minlength="6">
+    </div>
+    <div class="field">
+      <label for="reset_confirm_password">Confirm New Password</label>
+      <input type="password" id="reset_confirm_password" minlength="6">
+      <div class="hint" id="reset-pw-error"></div>
+    </div>
+    <div class="btn-row">
+      <button id="btn-confirm-reset-pw" class="btn btn-gold">Reset Password</button>
+      <button id="btn-cancel-reset-pw" class="btn btn-ghost">Cancel</button>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function () {
+  const overviewBody = document.getElementById('overview-tbody');
+  const supportLink = document.getElementById('support-inbox-link');
+
+  async function refreshOverview() {
+    try {
+      const res = await fetch('/admin/api/overview');
+      if (!res.ok) return;
+      const data = await res.json();
+      if (!data.ok) return;
+
+      if (data.unresolved_support > 0) {
+        supportLink.textContent = `Support Inbox (${data.unresolved_support} pending)`;
+      } else {
+        supportLink.textContent = 'Support Inbox';
+      }
+
+      if (!data.users.length) {
+        overviewBody.innerHTML = '<tr class="empty-row"><td colspan="5">No users yet.</td></tr>';
+        return;
+      }
+      overviewBody.innerHTML = data.users.map(u => {
+        const botPill = u.running
+          ? '<span class="status-pill running"><span class="dot"></span>Running</span>'
+          : '<span class="status-pill stopped"><span class="dot"></span>Stopped</span>';
+        const mode = u.dry_run ? 'Dry-run' : 'LIVE';
+        const modeStyle = u.dry_run ? '' : 'color:var(--red);font-weight:600;';
+        const errBadge = u.recent_errors > 0
+          ? `<span class="error-badge" title="${u.last_error ? u.last_error.replace(/"/g, '&quot;') : ''}">${u.recent_errors} error${u.recent_errors === 1 ? '' : 's'}</span>`
+          : '<span class="error-badge none">Clean</span>';
+        return `<tr>
+          <td>${u.username}${u.is_admin ? ' <span class="hint">(admin)</span>' : ''}</td>
+          <td>${botPill}</td>
+          <td>${u.symbol}</td>
+          <td style="${modeStyle}">${mode}</td>
+          <td>${errBadge}</td>
+        </tr>`;
+      }).join('');
+    } catch (e) { /* network hiccup, try again next tick */ }
+  }
+
+  refreshOverview();
+  setInterval(refreshOverview, 5000);
+
+  // Reset password modal
+  const overlay = document.getElementById('reset-pw-modal-overlay');
+  const targetLabel = document.getElementById('reset-pw-target');
+  const newPw = document.getElementById('reset_new_password');
+  const confirmPw = document.getElementById('reset_confirm_password');
+  const errEl = document.getElementById('reset-pw-error');
+  let currentTarget = null;
+
+  document.querySelectorAll('.reset-pw-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      currentTarget = btn.dataset.username;
+      targetLabel.textContent = currentTarget;
+      newPw.value = '';
+      confirmPw.value = '';
+      errEl.textContent = '';
+      overlay.classList.remove('hidden');
+    });
+  });
+
+  document.getElementById('btn-cancel-reset-pw').addEventListener('click', () => {
+    overlay.classList.add('hidden');
+  });
+  overlay.addEventListener('click', (e) => { if (e.target === overlay) overlay.classList.add('hidden'); });
+
+  document.getElementById('btn-confirm-reset-pw').addEventListener('click', async () => {
+    errEl.textContent = '';
+    if (newPw.value.length < 6) {
+      errEl.textContent = 'Password must be at least 6 characters.';
+      errEl.style.color = 'var(--red)';
+      return;
+    }
+    if (newPw.value !== confirmPw.value) {
+      errEl.textContent = 'Passwords do not match.';
+      errEl.style.color = 'var(--red)';
+      return;
+    }
+    try {
+      const res = await fetch('/admin/api/reset-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username: currentTarget, new_password: newPw.value, confirm_password: confirmPw.value }),
+      });
+      const data = await res.json();
+      if (data.ok) {
+        overlay.classList.add('hidden');
+        alert(`Password reset for ${currentTarget}.`);
+      } else {
+        errEl.textContent = data.error || 'Could not reset password.';
+        errEl.style.color = 'var(--red)';
+      }
+    } catch (e) {
+      errEl.textContent = 'Could not reach the server.';
+      errEl.style.color = 'var(--red)';
+    }
+  });
+})();
+</script>
 {% endblock %}
