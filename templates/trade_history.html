@@ -1,0 +1,135 @@
+{% extends "base.html" %}
+{% block title %}Trade History — Aurelius Algo{% endblock %}
+{% block body %}
+
+<nav class="topnav">
+  <div class="brand">
+    {{ coin_glyph(28) }}
+    <span class="wordmark" style="font-size:17px;">Aurelius<span> Algo</span></span>
+  </div>
+  <div class="nav-right">
+    <span class="user">{{ username }}</span>
+    <a href="{{ url_for('dashboard') }}">Dashboard</a>
+    {% if is_admin %}<a href="{{ url_for('admin_page') }}">Admin</a>{% endif %}
+    <a href="{{ url_for('logout') }}">Log out</a>
+  </div>
+</nav>
+
+<div class="page-header">
+  <h1>Trade History</h1>
+  <p>Every closed trade, filterable by date. Nothing here ever disappears after a day.</p>
+</div>
+
+<div class="dash" style="grid-template-columns: 1fr;">
+  <div class="panel">
+    <div class="filter-row">
+      <div class="field" style="margin-bottom:0;">
+        <label for="filter-from">From</label>
+        <input type="date" id="filter-from">
+      </div>
+      <div class="field" style="margin-bottom:0;">
+        <label for="filter-to">To</label>
+        <input type="date" id="filter-to">
+      </div>
+      <button id="btn-apply-filter" class="btn btn-gold btn-sm">Apply</button>
+      <button id="btn-clear-filter" class="btn btn-ghost btn-sm">Clear</button>
+      <button id="btn-export-history" class="btn btn-ghost btn-sm" style="margin-left:auto;">Export to Excel</button>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-title">
+      <span id="history-summary">All Trades</span>
+    </div>
+    <div id="history-table-wrap">
+      <div class="empty-state">Loading…</div>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function () {
+  const wrap = document.getElementById('history-table-wrap');
+  const summary = document.getElementById('history-summary');
+  const fromInput = document.getElementById('filter-from');
+  const toInput = document.getElementById('filter-to');
+
+  function fmtMoney(n) {
+    if (n == null || isNaN(n)) return '—';
+    const v = Number(n);
+    return `${v >= 0 ? '+' : ''}$${v.toFixed(2)}`;
+  }
+
+  function render(trades) {
+    if (!trades || !trades.length) {
+      wrap.innerHTML = '<div class="empty-state">No trades in this range.</div>';
+      summary.textContent = 'No Trades';
+      return;
+    }
+    let totalPnl = 0;
+    let counted = 0;
+    const rows = trades.map(t => {
+      const side = (t.direction || '').toLowerCase();
+      const sideLabel = side === 'long' ? 'Long' : side === 'short' ? 'Short' : '—';
+      const pnl = t.realized_pnl_estimate;
+      if (pnl != null) { totalPnl += Number(pnl); counted++; }
+      const pnlClass = pnl == null ? '' : (pnl >= 0 ? 'pos' : 'neg');
+      const closedAt = t.closed_at ? new Date(t.closed_at * 1000).toLocaleString() : '—';
+      const source = t.pnl_source === 'exchange' ? 'Delta' : 'Est.';
+      const reasonLabel = t.close_reason === 'bot_1_1' ? '1:1 exit' : t.close_reason === 'external' ? 'SL/TP or manual' : (t.close_reason || '—');
+      return `
+        <tr>
+          <td>${closedAt}</td>
+          <td>${t.symbol || '—'}</td>
+          <td><span class="side-tag ${side}">${sideLabel}</span></td>
+          <td>${t.entry_price != null ? Number(t.entry_price).toFixed(2) : '—'}</td>
+          <td>${t.exit_price != null ? Number(t.exit_price).toFixed(2) : '—'}</td>
+          <td>${t.size != null ? t.size : '—'}</td>
+          <td>${reasonLabel}</td>
+          <td>${t.commission != null ? '$' + Number(t.commission).toFixed(2) : '—'}</td>
+          <td class="${pnlClass}">${fmtMoney(pnl)} <span class="hint">(${source})</span></td>
+        </tr>
+      `;
+    }).join('');
+    wrap.innerHTML = `
+      <table class="trades-table">
+        <thead><tr><th>Closed</th><th>Symbol</th><th>Side</th><th>Entry</th><th>Exit</th><th>Size</th><th>Reason</th><th>Fees</th><th>P&amp;L</th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+    `;
+    summary.textContent = `${trades.length} trade${trades.length === 1 ? '' : 's'} · Total ${fmtMoney(totalPnl)}${counted < trades.length ? ' (partial)' : ''}`;
+  }
+
+  async function load() {
+    wrap.innerHTML = '<div class="empty-state">Loading…</div>';
+    let url = '/api/trades/all';
+    const params = [];
+    if (fromInput.value) params.push(`from=${Math.floor(new Date(fromInput.value + 'T00:00:00').getTime() / 1000)}`);
+    if (toInput.value) params.push(`to=${Math.floor(new Date(toInput.value + 'T23:59:59').getTime() / 1000)}`);
+    if (params.length) url += '?' + params.join('&');
+    try {
+      const res = await fetch(url);
+      const data = await res.json();
+      if (data.ok) render(data.trades);
+    } catch (e) {
+      wrap.innerHTML = '<div class="empty-state">Could not load trade history.</div>';
+    }
+  }
+
+  document.getElementById('btn-apply-filter').addEventListener('click', load);
+  document.getElementById('btn-clear-filter').addEventListener('click', () => {
+    fromInput.value = '';
+    toInput.value = '';
+    load();
+  });
+  document.getElementById('btn-export-history').addEventListener('click', () => {
+    window.location.href = '/api/trades/export';
+  });
+
+  load();
+})();
+</script>
+{% endblock %}

@@ -817,3 +817,25 @@ table.simple .empty-row td { color: var(--text-faint); font-style: italic; text-
 .error-badge.none {
   background: var(--teal-dim); color: #a8ecdb; border: 1px solid rgba(47,191,157,0.3);
 }
+
+/* ------------------------------------------------------------
+   Trade history date filter row
+   ------------------------------------------------------------ */
+.filter-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+.filter-row input[type="date"] {
+  padding: 10px 12px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--hairline);
+  background: var(--bg-elev);
+  color: var(--text);
+  font-family: 'Inter', sans-serif;
+  font-size: 13.5px;
+  box-shadow: var(--shadow-pressed);
+  color-scheme: dark;
+}

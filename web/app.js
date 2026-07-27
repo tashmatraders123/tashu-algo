@@ -38,6 +38,7 @@
   const btnCancelPasswordModal = $('btn-cancel-password-modal');
 
   let previousPrices = {};
+  let lastMarketState = null;
 
   let hadApiKeys = false;
   let wasInPosition = false;
@@ -192,9 +193,44 @@
     return `${v >= 0 ? '+' : ''}$${v.toFixed(2)}`;
   }
 
+  function renderMarketStateHtml(state) {
+    if (!state) {
+      return '<div class="empty-state">No open position. Waiting for a signal.</div>';
+    }
+    const biasLabel = state.trend_bias === 'bullish' ? 'Bullish' : state.trend_bias === 'bearish' ? 'Bearish' : 'Flat / Choppy';
+    const biasClass = state.trend_bias === 'bullish' ? 'long' : state.trend_bias === 'bearish' ? 'short' : '';
+    const updatedAgo = state.updated_at ? Math.max(0, Math.round(Date.now() / 1000 - state.updated_at)) : null;
+    return `
+      <div class="empty-state" style="padding: 10px 4px 18px; font-style: normal;">
+        No open position — here's what the algo is currently reading (${state.strategy_mode || ''} mode, ${state.resolution || ''}m candles):
+      </div>
+      <div style="margin-bottom:14px;">
+        <span class="side-badge ${biasClass}">${biasLabel} bias</span>
+      </div>
+      <div class="position-grid">
+        <div class="pos-item"><div class="label">Last Close</div><div class="value">${state.close != null ? Number(state.close).toFixed(2) : '—'}</div></div>
+        <div class="pos-item"><div class="label">ATR</div><div class="value">${state.atr != null ? Number(state.atr).toFixed(2) : '—'}</div></div>
+        <div class="pos-item"><div class="label">EMA Fast</div><div class="value">${state.ema_fast != null ? Number(state.ema_fast).toFixed(2) : '—'}</div></div>
+        <div class="pos-item"><div class="label">EMA Slow</div><div class="value">${state.ema_slow != null ? Number(state.ema_slow).toFixed(2) : '—'}</div></div>
+        <div class="pos-item span-2"><div class="label">RSI</div><div class="value">${state.rsi != null ? Number(state.rsi).toFixed(1) : '—'}</div></div>
+      </div>
+      <div class="hint" style="margin-top:12px;">${updatedAgo != null ? `Updated ${updatedAgo}s ago` : ''}</div>
+    `;
+  }
+
+  async function refreshMarketState() {
+    if (!positionDetails) return;
+    try {
+      const res = await fetch('/api/market-state');
+      if (!res.ok) return;
+      const data = await res.json();
+      if (data.ok) lastMarketState = data.state;
+    } catch (e) { /* network hiccup, try again next tick */ }
+  }
+
   function renderPosition(data) {
     if (!data.has_position) {
-      positionDetails.innerHTML = '<div class="empty-state">No open position. Waiting for a signal.</div>';
+      positionDetails.innerHTML = renderMarketStateHtml(lastMarketState);
       return;
     }
     const side = (data.side || '').toLowerCase();
@@ -234,6 +270,8 @@
         floatPnl.classList.remove('pos', 'neg');
         return;
       }
+
+      if (!data.has_position) await refreshMarketState();
 
       floatBalance.textContent = data.balance != null ? `$${Number(data.balance).toFixed(2)}` : '—';
       if (data.has_position && data.unrealized_pnl != null) {

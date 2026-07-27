@@ -436,6 +436,55 @@ def api_trades():
     return jsonify({"ok": True, "trades": recent})
 
 
+@app.route("/api/trades/all")
+@login_required
+def api_trades_all():
+    """
+    Full trade history (not capped at 25), optionally filtered to a date
+    range via ?from=<unix_ts>&to=<unix_ts>. Backs the dedicated Trade
+    History page so trades from any day are always reachable, not just
+    whatever fits in the dashboard's Recent Trades panel.
+    """
+    username = session["username"]
+    history = _read_trade_history(username)
+    from_ts = request.args.get("from", type=int)
+    to_ts = request.args.get("to", type=int)
+    if from_ts is not None:
+        history = [t for t in history if (t.get("closed_at") or 0) >= from_ts]
+    if to_ts is not None:
+        history = [t for t in history if (t.get("closed_at") or 0) <= to_ts]
+    return jsonify({"ok": True, "trades": list(reversed(history))})
+
+
+@app.route("/trades")
+@login_required
+def trades_page():
+    return render_template(
+        "trade_history.html", username=session["username"],
+        is_admin=users.is_admin(session["username"]),
+    )
+
+
+@app.route("/api/market-state")
+@login_required
+def api_market_state():
+    """
+    What the bot is currently seeing in the market -- EMA relationship,
+    RSI, ATR, trend bias -- so the Position Details panel can show
+    something useful while flat instead of just "waiting for a signal."
+    Written by the bot subprocess every cycle; read-only here.
+    """
+    username = session["username"]
+    path = os.path.join(users.user_dir(username), "market_state.json")
+    if not os.path.exists(path):
+        return jsonify({"ok": True, "state": None})
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            return jsonify({"ok": True, "state": json.load(f)})
+    except (json.JSONDecodeError, OSError):
+        return jsonify({"ok": True, "state": None})
+
+
 def _build_trade_history_workbook(rows_by_user):
     """
     rows_by_user: dict of username -> list of trade dicts (as recorded by

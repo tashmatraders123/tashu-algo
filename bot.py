@@ -53,6 +53,9 @@ STOP_FLAG_PATH = os.path.join(os.getcwd(), config.STOP_FLAG_FILE)
 POSITION_STATE_PATH = os.path.join(
     os.getcwd(), os.path.dirname(config.LOG_FILE) or ".", "position_state.json"
 )
+MARKET_STATE_PATH = os.path.join(
+    os.getcwd(), os.path.dirname(config.LOG_FILE) or ".", "market_state.json"
+)
 
 
 def _stop_flag_set():
@@ -153,6 +156,40 @@ class ScalpingBot:
                 json.dump(self.open_trade, f)
         except OSError as e:
             log.warning("Could not write position state file: %s", e)
+
+    def _persist_market_state(self, latest_time, last_candle, direction, atr_value):
+        """
+        Writes the algo's current market read to disk every cycle --
+        regardless of whether a trade is open -- so the dashboard can show
+        what the bot is actually seeing while flat (EMA relationship, RSI,
+        ATR, trend bias) instead of just a blank "waiting" message.
+        """
+        try:
+            if last_candle["ema_fast"] > last_candle["ema_slow"]:
+                trend_bias = "bullish"
+            elif last_candle["ema_fast"] < last_candle["ema_slow"]:
+                trend_bias = "bearish"
+            else:
+                trend_bias = "flat"
+
+            state = {
+                "candle_time": str(latest_time),
+                "close": float(last_candle["close"]),
+                "ema_fast": float(last_candle["ema_fast"]),
+                "ema_slow": float(last_candle["ema_slow"]),
+                "rsi": float(last_candle["rsi"]),
+                "atr": float(last_candle["atr"]),
+                "trend_bias": trend_bias,
+                "pending_signal": direction,  # None unless a signal fired this cycle
+                "strategy_mode": config.STRATEGY_MODE,
+                "resolution": config.RESOLUTION,
+                "updated_at": int(time.time()),
+            }
+            os.makedirs(os.path.dirname(MARKET_STATE_PATH) or ".", exist_ok=True)
+            with open(MARKET_STATE_PATH, "w", encoding="utf-8") as f:
+                json.dump(state, f)
+        except OSError as e:
+            log.warning("Could not write market state file: %s", e)
 
     def get_exec_price(self, real_market_price):
         """
@@ -284,14 +321,32 @@ class ScalpingBot:
         """
         Appends a closed trade to trade_history.json (same per-user
         directory as position_state.json) for the dashboard's Recent
-        Trades panel and Excel export. Best-effort: never lets a write
-        failure interrupt trading. realized_pnl_estimate is exactly that
-        -- an estimate from entry/exit price and contract_value, not a
-        substitute for Delta's own settled P&L.
+        Trades panel and Excel export. Prefers Delta's own authoritative
+        realized_pnl/commission (fetched fresh right after the close);
+        only falls back to an entry/exit-price estimate if that's
+        genuinely unavailable (e.g. dry-run, where there's no real
+        exchange position to query).
         """
         try:
             realized_pnl = None
-            if exit_price is not None:
+            commission = None
+            pnl_source = "estimate"
+
+            if not config.DRY_RUN:
+                try:
+                    snapshot = self.trade_client.get_position_snapshot(self.product_id)
+                    if snapshot:
+                        rp = snapshot.get("realized_pnl")
+                        comm = snapshot.get("commission")
+                        if rp is not None:
+                            realized_pnl = float(rp)
+                            pnl_source = "exchange"
+                        if comm is not None:
+                            commission = float(comm)
+                except (DeltaAPIError, TypeError, ValueError) as e:
+                    log.warning("Could not fetch exchange realized_pnl, falling back to estimate: %s", e)
+
+            if realized_pnl is None and exit_price is not None:
                 direction_sign = 1 if trade["direction"] == "long" else -1
                 price_diff = (exit_price - trade["entry_price"]) * direction_sign
                 realized_pnl = price_diff * abs(trade["size"]) * self.contract_value
@@ -307,6 +362,8 @@ class ScalpingBot:
                 "opened_at": trade.get("opened_at"),
                 "closed_at": int(time.time()),
                 "realized_pnl_estimate": realized_pnl,
+                "pnl_source": pnl_source,
+                "commission": commission,
             }
 
             history_dir = os.path.dirname(POSITION_STATE_PATH) or "."
@@ -357,6 +414,7 @@ class ScalpingBot:
             latest_time, last["close"], last["ema_fast"], last["ema_slow"],
             last["rsi"], last["atr"],
         )
+        self._persist_market_state(latest_time, last, None, last["atr"])
 
         balance = self.get_balance()
         if self.risk.daily_kill_switch_triggered(balance):

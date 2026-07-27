@@ -159,6 +159,22 @@ class DeltaClient:
         data = self._request("GET", "/v2/positions/margined", params=params, auth=True)
         return data["result"]
 
+    def get_position_snapshot(self, product_id):
+        """
+        Delta's position record includes 'realized_pnl' and 'commission'
+        directly -- even at zero size, immediately after a close, it
+        still reflects the just-closed trade. Used to get the ACTUAL
+        realized P&L and fees instead of estimating from entry/exit price.
+        Returns None if no record is found for this product.
+        """
+        positions = self.get_positions(product_id)
+        if isinstance(positions, dict):
+            positions = [positions]
+        for p in positions:
+            if p.get("product_id") == product_id:
+                return p
+        return positions[0] if positions else None
+
     def set_leverage(self, product_id, leverage):
         body = {"leverage": str(leverage)}
         return self._request(
