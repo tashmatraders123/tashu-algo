@@ -109,6 +109,25 @@ class DeltaClient:
                 return t
         raise DeltaAPIError(f"Symbol {symbol} not found in tickers")
 
+    def get_reference_price(self, symbol):
+        """
+        Best available current price for a symbol. Prefers mark_price
+        (continuously computed from the index, keeps moving even with no
+        recent trades) over the ticker's 'close' field (last TRADED
+        price -- which goes stale on thin-liquidity venues like testnet,
+        where a product can sit with no real trade volume for long
+        stretches while mark_price keeps tracking the real market).
+        """
+        ticker = self.get_ticker(symbol)
+        for field in ("mark_price", "spot_price", "close"):
+            value = ticker.get(field)
+            if value is not None:
+                try:
+                    return float(value)
+                except (TypeError, ValueError):
+                    continue
+        raise DeltaAPIError(f"No usable price field in ticker for {symbol}")
+
     def get_tickers(self, symbols=None):
         """
         Public endpoint. Returns ticker data for all products, or just the

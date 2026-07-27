@@ -203,8 +203,7 @@ class ScalpingBot:
         if config.DRY_RUN:
             return real_market_price
         try:
-            trade_ticker = self.trade_client.get_ticker(config.SYMBOL)
-            return float(trade_ticker["close"])
+            return self.trade_client.get_reference_price(config.SYMBOL)
         except DeltaAPIError as e:
             log.warning("Could not fetch trade-account price, using real market price instead: %s", e)
             return real_market_price
@@ -432,7 +431,7 @@ class ScalpingBot:
             if not still_open:
                 log.info("POSITION_CLOSED_EXTERNAL: no longer open on exchange (closed via SL/TP fill, or closed manually on Delta). Clearing tracked state.")
                 try:
-                    exit_price = float(self.trade_client.get_ticker(config.SYMBOL)["close"])
+                    exit_price = self.trade_client.get_reference_price(config.SYMBOL)
                 except DeltaAPIError:
                     exit_price = None
                 self._record_trade_history(self.open_trade, exit_price, "external")

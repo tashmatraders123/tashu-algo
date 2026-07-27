@@ -6,3 +6,4 @@ numpy
 python-dotenv
 gunicorn
 openpyxl
+gunicorn

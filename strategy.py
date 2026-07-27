@@ -132,24 +132,27 @@ def _generate_a_plus_signal(df):
          A_PLUS_PULLBACK_LOOKBACK candles, with the CURRENT candle
          resuming in the trend direction -- a "buy the dip" / "sell the
          rip" continuation entry, not a chase of an already-extended move.
-      3. RSI confirms momentum: above 50 and rising for longs, below 50
-         and falling for shorts -- not just "somewhere in a wide band."
+      3. Two-candle momentum confirmation: RSI above 50 and rising on
+         BOTH of the last two candles for longs (below 50 and falling for
+         shorts) -- one strong candle alone can be noise; two in a row is
+         a much higher-conviction read.
       4. The current candle itself closes with conviction (closes in the
          upper third of its own range for longs, lower third for shorts)
          -- filters out indecisive/doji candles right at the trigger.
 
-    Both thresholds are tunable via .env (A_PLUS_MIN_TREND_ATR_MULT,
-    A_PLUS_PULLBACK_LOOKBACK) but have sane defaults if left unset.
+    Tunable via .env (A_PLUS_MIN_TREND_ATR_MULT, A_PLUS_PULLBACK_LOOKBACK)
+    but has sane defaults if left unset.
     """
     lookback = getattr(config, "A_PLUS_PULLBACK_LOOKBACK", 5)
     trend_atr_mult = getattr(config, "A_PLUS_MIN_TREND_ATR_MULT", 0.5)
 
-    min_len = max(config.EMA_SLOW, config.RSI_PERIOD, config.ATR_PERIOD) + lookback + 2
+    min_len = max(config.EMA_SLOW, config.RSI_PERIOD, config.ATR_PERIOD) + lookback + 3
     if len(df) < min_len:
         return None, None
 
     last = df.iloc[-1]
     prev = df.iloc[-2]
+    prev2 = df.iloc[-3]
     recent = df.iloc[-(lookback + 1):-1]  # the candles BEFORE the current one
 
     if last["atr"] <= 0:
@@ -167,13 +170,21 @@ def _generate_a_plus_signal(df):
 
     if trend_strength_ok and uptrend:
         pulled_back = bool((recent["low"] <= recent["ema_fast"]).any())
-        momentum_ok = last["rsi"] > 50 and last["rsi"] > prev["rsi"]
+        # Two-candle confirmation: both the current and prior candle show
+        # rising RSI above 50, not just a single strong bar.
+        momentum_ok = (
+            last["rsi"] > 50 and last["rsi"] > prev["rsi"]
+            and prev["rsi"] > prev2["rsi"]
+        )
         if pulled_back and momentum_ok and bullish_close:
             return "long", last["atr"]
 
     if trend_strength_ok and downtrend:
         pulled_back = bool((recent["high"] >= recent["ema_fast"]).any())
-        momentum_ok = last["rsi"] < 50 and last["rsi"] < prev["rsi"]
+        momentum_ok = (
+            last["rsi"] < 50 and last["rsi"] < prev["rsi"]
+            and prev["rsi"] < prev2["rsi"]
+        )
         if pulled_back and momentum_ok and bearish_close:
             return "short", last["atr"]
 

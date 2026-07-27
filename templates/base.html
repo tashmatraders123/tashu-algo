@@ -2,52 +2,35 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <title>{% block title %}Delta Scalper{% endblock %}</title>
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
-  {% block head_extra %}{% endblock %}
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}Aurelius Algo{% endblock %}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
-<body class="{% block body_class %}{% endblock %}">
-  <div class="aura aura-1" aria-hidden="true"></div>
-  <div class="aura aura-2" aria-hidden="true"></div>
-  <div class="aura aura-3" aria-hidden="true"></div>
+<body>
 
-  {% block body %}{% endblock %}
+{% macro coin_glyph(size=34) -%}
+<svg class="coin" width="{{ size }}" height="{{ size }}" viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg">
+  <circle cx="20" cy="20" r="18" fill="none" stroke="#c9a227" stroke-width="1.1" opacity="0.85"/>
+  <circle cx="20" cy="20" r="14.5" fill="none" stroke="#e8c46b" stroke-width="0.8" opacity="0.55"/>
+  <g stroke="#c9a227" stroke-width="1" opacity="0.7">
+    <line x1="20" y1="2.5" x2="20" y2="6"/>
+    <line x1="20" y1="34" x2="20" y2="37.5"/>
+    <line x1="2.5" y1="20" x2="6" y2="20"/>
+    <line x1="34" y1="20" x2="37.5" y2="20"/>
+    <line x1="7.4" y1="7.4" x2="9.8" y2="9.8"/>
+    <line x1="30.2" y1="30.2" x2="32.6" y2="32.6"/>
+    <line x1="32.6" y1="7.4" x2="30.2" y2="9.8"/>
+    <line x1="9.8" y1="30.2" x2="7.4" y2="32.6"/>
+  </g>
+  <circle cx="20" cy="20" r="3" fill="#e8c46b"/>
+</svg>
+{%- endmacro %}
 
-  <footer class="site-footer">
-    <div class="made-by">Made with <span class="heart">&#10084;</span> by Tashu Gaur</div>
-    <div class="foot-links">
-      <a href="{{ url_for('contact_page') }}">Contact</a>
-      <span aria-hidden="true">&middot;</span>
-      <a href="#" data-open-contact>Get in touch</a>
-    </div>
-  </footer>
+{% block body %}{% endblock %}
 
-  <!-- Contact window, reachable from anywhere in the app -->
-  <div class="modal-overlay" id="contact-modal">
-    <div class="modal-box glass">
-      <button class="modal-close" data-close-modal aria-label="Close">&#10005;</button>
-      <h2 style="font-size:18px; margin-bottom:4px;">Contact</h2>
-      <p class="text-muted text-sm" style="margin-top:0;">Questions, bugs, or feature requests -- reach out any of these ways.</p>
-      <div class="contact-row">
-        <div class="icon">&#9993;</div>
-        <div class="txt"><div class="k">Email</div><div class="v">tashu.gaur@example.com</div></div>
-      </div>
-      <div class="contact-row">
-        <div class="icon">&#128172;</div>
-        <div class="txt"><div class="k">Telegram</div><div class="v">@tashugaur</div></div>
-      </div>
-      <div class="contact-row">
-        <div class="icon">&#128187;</div>
-        <div class="txt"><div class="k">GitHub</div><div class="v">github.com/tashugaur</div></div>
-      </div>
-      <p class="text-muted text-sm" style="margin-top:16px; margin-bottom:0;">Built and maintained by Tashu Gaur.</p>
-    </div>
-  </div>
+<footer class="site-footer">Made with <span class="heart">&#10084;</span> by Tashu Gaur</footer>
 
-  <div id="toast-stack" aria-live="polite"></div>
-
-  <script src="{{ url_for('static', filename='js/common.js') }}"></script>
-  {% block scripts %}{% endblock %}
+<script src="{{ url_for('static', filename='app.js') }}"></script>
+{% block scripts %}{% endblock %}
 </body>
 </html>

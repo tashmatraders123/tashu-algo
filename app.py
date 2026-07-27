@@ -329,7 +329,7 @@ def api_position():
         live_position = next((p for p in positions if float(p.get("size", 0) or 0) != 0), None)
 
         try:
-            result["current_price"] = float(client.get_ticker(settings["symbol"])["close"])
+            result["current_price"] = client.get_reference_price(settings["symbol"])
         except DeltaAPIError:
             result["current_price"] = None
 

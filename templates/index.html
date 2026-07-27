@@ -1,197 +1,178 @@
 {% extends "base.html" %}
-{% block title %}Dashboard -- Delta Scalper{% endblock %}
-{% block body_class %}app{% endblock %}
-
+{% block title %}Dashboard — Aurelius Algo{% endblock %}
 {% block body %}
-<header class="topbar">
-  <div class="topbar-left">
-    <div class="glyph">&Delta;</div>
-    <div class="brand-name">Delta Scalper<span class="sub">Control panel</span></div>
+
+<nav class="topnav">
+  <div class="brand">
+    {{ coin_glyph(28) }}
+    <span class="wordmark" style="font-size:17px;">Aurelius<span> Algo</span></span>
   </div>
-  <nav class="nav-links">
-    <a href="{{ url_for('dashboard') }}">Dashboard</a>
+  <div class="nav-right">
+    <span id="status-pill" class="status-pill stopped"><span class="dot"></span>Stopped</span>
+    <span class="user">{{ username }}</span>
+    <a href="{{ url_for('support_page') }}">Support</a>
     {% if is_admin %}<a href="{{ url_for('admin_page') }}">Admin</a>{% endif %}
-    <button type="button" class="nav-link" data-open-contact>Contact</button>
-  </nav>
-  <div class="topbar-right">
-    <div class="user-chip">
-      <div class="avatar">{{ username[0]|upper }}</div>
-      <span>{{ username }}</span>
-    </div>
-    <a href="{{ url_for('logout') }}" class="btn btn-ghost btn-sm">Log out</a>
+    <a href="{{ url_for('logout') }}">Log out</a>
   </div>
-</header>
+</nav>
 
-<div class="ticker-wrap">
+<div class="ticker-tape">
+  <span class="ticker-live-badge"><span class="dot live-dot"></span>LIVE</span>
   <div class="ticker-track" id="ticker-track">
-    <div class="ticker-empty">Loading live prices&hellip;</div>
+    <span class="ticker-item muted">Loading live prices&hellip;</span>
   </div>
 </div>
 
-<main class="shell">
-  <div class="grid">
-    <!-- LEFT COLUMN -->
-    <div class="stack">
+<div class="dash">
+  <!-- Left: trade settings + API keys -->
+  <div>
+    <div class="panel">
+      <div class="panel-title">Trade Settings</div>
 
-      <section class="glass card">
-        <div class="card-title">
-          <h2><span class="eyebrow-icon"></span> Control</h2>
-          <span class="status-pill stopped" id="status-pill"><span class="dot"></span><span class="label">Stopped</span></span>
-        </div>
+      <div class="field">
+        <label for="symbol">Coin</label>
+        <select id="symbol">
+          {% for s in common_symbols %}
+          <option value="{{ s }}">{{ s }}</option>
+          {% endfor %}
+        </select>
+      </div>
 
-        <div class="control-grid">
-          <div class="field">
-            <label for="symbol-select">Coin</label>
-            <select id="symbol-select">
-              {% for sym in common_symbols %}
-                <option value="{{ sym }}" {% if sym == 'BTCUSD' %}selected{% endif %}>{{ sym }}</option>
-              {% endfor %}
-            </select>
-          </div>
-          <div class="field">
-            <label for="lot-size">Lot size (0 = auto)</label>
-            <input type="number" id="lot-size" min="0" step="1" value="0" placeholder="0">
-          </div>
+      <div class="field">
+        <label for="fixed_size">Lot size (0 = auto)</label>
+        <input type="number" id="fixed_size" min="0" value="0">
+      </div>
 
-          <div class="live-toggle-box" id="live-toggle-box">
-            <div>
-              <div class="label">Live trading</div>
-              <div class="sub">Off = dry run (simulated). On = real orders.</div>
-            </div>
-            <label class="switch">
-              <input type="checkbox" id="live-toggle">
-              <span class="track"></span>
-            </label>
-          </div>
+      <div class="toggle-row">
+        <span class="toggle-label warn">Live trading (real orders)</span>
+        <span class="switch">
+          <input type="checkbox" id="live_trading" class="danger">
+          <span class="track"></span>
+        </span>
+      </div>
 
-          <div class="actions-row">
-            <button type="button" id="start-btn" class="btn btn-primary">&#9654; Start bot</button>
-            <button type="button" id="stop-btn" class="btn btn-danger" disabled>&#9632; Stop bot</button>
-          </div>
-        </div>
-      </section>
-
-      <section class="glass card balance-strip" style="flex-direction:column; align-items:stretch;">
-        <div class="row-between">
-          <div class="balance-item">
-            <div class="k">Available balance</div>
-            <div class="v" id="balance-value">--</div>
-          </div>
-          <div class="balance-divider"></div>
-          <div class="balance-item">
-            <div class="k">Account</div>
-            <div class="v" style="font-size:14px;">{{ username }}</div>
-          </div>
-        </div>
-        <div class="sparkline-wrap mini"><canvas id="balance-sparkline"></canvas></div>
-      </section>
-
-      <section class="glass card">
-        <div class="card-title">
-          <h2><span class="eyebrow-icon"></span> Exchange API key</h2>
-        </div>
-
-        <div id="api-key-set-row" class="api-key-set" style="{% if not has_api_keys %}display:none;{% endif %}">
-          <div class="k-line">
-            <span class="icon">&#128273;</span>
-            <div>
-              <div class="lbl">Connected</div>
-              <div class="val" id="api-key-masked-value">{{ api_key_masked }}</div>
-            </div>
-          </div>
-          <button type="button" id="change-api-key-btn" class="btn btn-ghost btn-sm">Change API key</button>
-        </div>
-
-        {% if not has_api_keys %}
-          <div class="alert alert-warning">Add your Delta API key and secret to connect your account before starting the bot.</div>
-        {% endif %}
-
-        <form id="api-key-form" class="api-key-form {% if not has_api_keys %}open{% endif %}">
-          <div class="field">
-            <label for="new-api-key">API key</label>
-            <input type="text" id="new-api-key" name="api_key" placeholder="Paste your Delta API key" autocomplete="off">
-          </div>
-          <div class="field">
-            <label for="new-api-secret">API secret</label>
-            <input type="password" id="new-api-secret" name="api_secret" placeholder="Paste your Delta API secret" autocomplete="off">
-          </div>
-          <div class="field">
-            <div class="checkbox-row">
-              <input type="checkbox" id="use-testnet" checked>
-              <label for="use-testnet">Use testnet (recommended until you've verified everything works)</label>
-            </div>
-          </div>
-          <div class="row">
-            <button type="submit" class="btn btn-primary">Save new key</button>
-            {% if has_api_keys %}
-              <button type="button" id="cancel-api-key-btn" class="btn btn-ghost">Cancel</button>
-            {% endif %}
-          </div>
-        </form>
-      </section>
+      <div class="btn-row">
+        <button id="btn-start" class="btn btn-teal">Start</button>
+        <button id="btn-stop" class="btn btn-red">Stop</button>
+      </div>
+      <div class="hint" style="margin-top:12px;">
+        Live trading starts OFF for safety. Orders go to your own Delta account below — nobody else's.
+      </div>
     </div>
 
-    <!-- RIGHT COLUMN -->
-    <div class="stack">
-      <section class="glass card">
-        <div class="card-title">
-          <h2><span class="eyebrow-icon"></span> Position &amp; trade details</h2>
-        </div>
-        <div id="position-card-body">
-          <div class="skeleton skeleton-line" style="height:22px; width:50%;"></div>
-          <div class="skeleton skeleton-line short" style="margin-top:14px;"></div>
-          <div class="skeleton skeleton-line" style="width:90%;"></div>
-        </div>
-      </section>
+    <div class="panel">
+      <div class="panel-title">Your Delta API Keys</div>
 
-      <section class="glass card">
-        <div class="card-title">
-          <h2><span class="eyebrow-icon"></span> Recent trades</h2>
+      <div id="api-key-status" class="api-key-status">
+        <div class="api-key-info">
+          <div class="label">Current key</div>
+          <div class="value" id="current-key-label">—</div>
         </div>
-        <div id="trades-card-body">
-          <div class="skeleton skeleton-line" style="width:80%;"></div>
-          <div class="skeleton skeleton-line short"></div>
-        </div>
+        <button id="btn-change-key" class="btn btn-ghost btn-sm">Change API Key</button>
+      </div>
+    </div>
 
-        <div class="log-toggle" id="log-toggle" style="margin-top:16px; border-top:1px solid var(--line); padding-top:14px;">
-          <span class="text-sm text-muted">Activity log</span>
-          <span class="chev">&#9660;</span>
-        </div>
-        <div class="log-body" id="log-body">
-          <div class="log-lines" id="log-lines"></div>
-        </div>
-      </section>
-
-      <section class="glass card">
-        <div class="card-title">
-          <h2><span class="eyebrow-icon"></span> Algorithm</h2>
-        </div>
-        <div id="algo-card-body">
-          <div class="empty-note">Loading strategy settings&hellip;</div>
-        </div>
-      </section>
+    <div class="panel">
+      <div class="panel-title">Account</div>
+      <div class="btn-row">
+        <button id="btn-change-password" class="btn btn-ghost">Change Password</button>
+      </div>
     </div>
   </div>
-</main>
 
-<!-- Floating, draggable P&L popup -->
-<div class="glass card" id="pnl-float">
-  <div class="pnl-float-head">
-    <span class="title"><span class="live-dot"></span> Live P&amp;L</span>
-    <button type="button" id="pnl-float-collapse" title="Collapse">&#8211;</button>
+  <!-- Right: live position details + recent trades -->
+  <div>
+    <div class="panel">
+      <div class="panel-title">Position Details</div>
+      <div id="position-details">
+        <div class="empty-state">No open position. Waiting for a signal.</div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-title">
+        Recent Trades
+        <span class="tools">
+          <a href="{{ url_for('trades_page') }}" class="btn btn-ghost btn-sm">Full History</a>
+          <button id="btn-export-trades" class="btn btn-ghost btn-sm">Export to Excel</button>
+        </span>
+      </div>
+      <div id="trades-table-wrap">
+        <div class="empty-state">No closed trades yet.</div>
+      </div>
+    </div>
   </div>
-  <div class="pnl-float-body">
-    <div class="amount flat">--</div>
-    <div class="sub">No open position</div>
-    <div class="sparkline-wrap mini"><canvas id="pnl-float-sparkline"></canvas></div>
-  </div>
-  <div class="pnl-float-collapsed-dot"></div>
 </div>
+
+<!-- Floating live P&L widget -->
+<div id="pnl-float" class="pnl-float">
+  <div class="pnl-float-label">Balance</div>
+  <div class="pnl-float-balance" id="float-balance">—</div>
+  <div class="pnl-float-label">Open P&amp;L</div>
+  <div class="pnl-float-pnl" id="float-pnl">—</div>
+</div>
+
+<!-- API key change modal -->
+<div id="api-modal-overlay" class="modal-overlay hidden">
+  <div class="modal-card">
+    <div class="panel-title">Update Delta API Keys</div>
+
+    <div class="field">
+      <label for="api_key">API Key</label>
+      <input type="text" id="api_key" placeholder="Enter new API key">
+    </div>
+    <div class="field">
+      <label for="api_secret">API Secret</label>
+      <input type="password" id="api_secret" placeholder="Enter new API secret">
+    </div>
+
+    <div class="toggle-row">
+      <span class="toggle-label">Use testnet (demo, fake money)</span>
+      <span class="switch">
+        <input type="checkbox" id="use_testnet">
+        <span class="track"></span>
+      </span>
+    </div>
+
+    <div class="btn-row">
+      <button id="btn-save-settings" class="btn btn-gold">Save</button>
+      <button id="btn-cancel-modal" class="btn btn-ghost">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- Change password modal -->
+<div id="password-modal-overlay" class="modal-overlay hidden">
+  <div class="modal-card">
+    <div class="panel-title">Change Password</div>
+
+    <div class="field">
+      <label for="current_password">Current Password</label>
+      <input type="password" id="current_password" autocomplete="current-password">
+    </div>
+    <div class="field">
+      <label for="new_password">New Password</label>
+      <input type="password" id="new_password" minlength="6" autocomplete="new-password">
+    </div>
+    <div class="field">
+      <label for="confirm_new_password">Confirm New Password</label>
+      <input type="password" id="confirm_new_password" minlength="6" autocomplete="new-password">
+      <div class="hint" id="password-modal-error"></div>
+    </div>
+
+    <div class="btn-row">
+      <button id="btn-save-password" class="btn btn-gold">Update Password</button>
+      <button id="btn-cancel-password-modal" class="btn btn-ghost">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast-stack" class="toast-stack"></div>
+
 {% endblock %}
 
 {% block scripts %}
 <script>
-  window.__DASH = { symbol: "BTCUSD", fixedSize: 0 };
+  window.AURELIUS_COMMON_SYMBOLS = {{ common_symbols | tojson }};
 </script>
-<script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
 {% endblock %}

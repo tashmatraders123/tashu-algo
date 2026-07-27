@@ -1,17 +1,13 @@
 {% extends "base.html" %}
-{% block title %}Sign in -- Delta Scalper{% endblock %}
-{% block body_class %}auth{% endblock %}
-
+{% block title %}Log in — Aurelius Algo{% endblock %}
 {% block body %}
 <div class="auth-shell">
-  <div class="auth-card glass card">
-    <div class="auth-brand">
-      <div class="glyph">&Delta;</div>
-      <div class="name">Delta Scalper<span>Trading control panel</span></div>
+  <div class="auth-card">
+    <div class="brand">
+      {{ coin_glyph() }}
+      <span class="wordmark">Aurelius<span> Algo</span></span>
     </div>
-
-    <h1>Welcome back</h1>
-    <p class="auth-sub">Sign in to watch your position and run your bot.</p>
+    <p class="subtitle">Log in to your own dashboard</p>
 
     {% if error %}
       <div class="alert alert-error">{{ error }}</div>
@@ -20,31 +16,19 @@
       <div class="alert alert-info">{{ info }}</div>
     {% endif %}
 
-    <form method="POST" action="{{ url_for('login_page') }}" autocomplete="on">
+    <form method="POST" action="{{ url_for('login_page') }}">
       <div class="field">
-        <label for="identifier">Username or email</label>
-        <input type="text" id="identifier" name="identifier" placeholder="you or you@example.com" required autofocus>
+        <label for="username">Username</label>
+        <input type="text" id="username" name="username" autocomplete="username" required autofocus>
       </div>
       <div class="field">
-        <label for="login-password">Password</label>
-        <div class="password-field">
-          <input type="password" id="login-password" name="password" placeholder="&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;" required>
-          <button type="button" class="password-toggle" data-target="login-password">Show</button>
-        </div>
+        <label for="password">Password</label>
+        <input type="password" id="password" name="password" autocomplete="current-password" required>
       </div>
-      <button type="submit" class="btn btn-primary btn-block">Sign in</button>
+      <button type="submit" class="btn btn-gold">Enter Dashboard</button>
     </form>
 
-    <div class="auth-foot">
-      Don't have an account? <a href="{{ url_for('register_page') }}">Create one</a>
-    </div>
-    <div class="auth-links">
-      <a href="#" data-open-contact>Need help? Contact support</a>
-    </div>
+    <p class="foot-link">No account yet? <a href="{{ url_for('register_page') }}">Create one</a></p>
   </div>
 </div>
-{% endblock %}
-
-{% block scripts %}
-<script src="{{ url_for('static', filename='js/auth.js') }}"></script>
 {% endblock %}
