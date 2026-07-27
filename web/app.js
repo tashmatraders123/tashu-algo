@@ -185,6 +185,31 @@
   }
 
   // ------------------------------------------------------------
+  // Smooth number transitions -- values count up/down to their new
+  // figure instead of jump-cutting, used on the floating P&L widget.
+  // ------------------------------------------------------------
+  const numberAnimState = new WeakMap();
+
+  function animateNumber(el, toValue, formatFn, duration = 500) {
+    if (!el) return;
+    const fromValue = numberAnimState.get(el) ?? toValue;
+    numberAnimState.set(el, toValue);
+    if (fromValue === toValue || isNaN(fromValue) || isNaN(toValue)) {
+      el.textContent = formatFn(toValue);
+      return;
+    }
+    const start = performance.now();
+    function tick(now) {
+      const t = Math.min(1, (now - start) / duration);
+      const eased = 1 - Math.pow(1 - t, 3); // ease-out cubic
+      const current = fromValue + (toValue - fromValue) * eased;
+      el.textContent = formatFn(current);
+      if (t < 1) requestAnimationFrame(tick);
+    }
+    requestAnimationFrame(tick);
+  }
+
+  // ------------------------------------------------------------
   // Position details + floating P&L + trade-event toasts
   // ------------------------------------------------------------
   function fmtMoney(n) {
@@ -273,15 +298,20 @@
 
       if (!data.has_position) await refreshMarketState();
 
-      floatBalance.textContent = data.balance != null ? `$${Number(data.balance).toFixed(2)}` : '—';
+      if (data.balance != null) {
+        animateNumber(floatBalance, Number(data.balance), (v) => `$${v.toFixed(2)}`);
+      } else {
+        floatBalance.textContent = '—';
+      }
       if (data.has_position && data.unrealized_pnl != null) {
         const pnl = Number(data.unrealized_pnl);
-        floatPnl.textContent = fmtMoney(pnl);
+        animateNumber(floatPnl, pnl, fmtMoney);
         floatPnl.classList.remove('pos', 'neg');
         floatPnl.classList.add(pnl >= 0 ? 'pos' : 'neg');
       } else {
         floatPnl.textContent = 'Flat';
         floatPnl.classList.remove('pos', 'neg');
+        numberAnimState.delete(floatPnl);
       }
 
       renderPosition(data);
@@ -315,15 +345,16 @@
       tradesTableWrap.innerHTML = '<div class="empty-state">No closed trades yet.</div>';
       return;
     }
-    const rows = trades.map(t => {
+    const rows = trades.map((t, i) => {
       const side = (t.direction || '').toLowerCase();
       const sideLabel = side === 'long' ? 'Long' : side === 'short' ? 'Short' : '—';
       const pnl = t.realized_pnl_estimate;
       const pnlClass = pnl == null ? '' : (pnl >= 0 ? 'pos' : 'neg');
       const closedAt = t.closed_at ? new Date(t.closed_at * 1000).toLocaleString() : '—';
       const reasonLabel = t.close_reason === 'bot_1_1' ? '1:1 exit' : t.close_reason === 'external' ? 'SL/TP or manual' : (t.close_reason || '—');
+      const delay = Math.min(i, 12) * 0.04;
       return `
-        <tr>
+        <tr style="animation-delay:${delay}s;">
           <td>${closedAt}</td>
           <td><span class="side-tag ${side}">${sideLabel}</span></td>
           <td>${t.entry_price != null ? Number(t.entry_price).toFixed(2) : '—'}</td>

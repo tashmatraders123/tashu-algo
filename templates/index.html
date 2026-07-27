@@ -19,7 +19,7 @@
 <div class="ticker-tape">
   <span class="ticker-live-badge"><span class="dot live-dot"></span>LIVE</span>
   <div class="ticker-track" id="ticker-track">
-    <span class="ticker-item muted">Loading live prices&hellip;</span>
+    <span class="skeleton-row w-60" style="display:inline-block; height:13px;"></span>
   </div>
 </div>
 
@@ -85,7 +85,9 @@
     <div class="panel">
       <div class="panel-title">Position Details</div>
       <div id="position-details">
-        <div class="empty-state">No open position. Waiting for a signal.</div>
+        <div class="skeleton-row w-40"></div>
+        <div class="skeleton-row w-80"></div>
+        <div class="skeleton-row w-60"></div>
       </div>
     </div>
 
@@ -98,7 +100,9 @@
         </span>
       </div>
       <div id="trades-table-wrap">
-        <div class="empty-state">No closed trades yet.</div>
+        <div class="skeleton-row w-80"></div>
+        <div class="skeleton-row w-60"></div>
+        <div class="skeleton-row w-40"></div>
       </div>
     </div>
   </div>
