@@ -24,6 +24,7 @@ from flask import Flask, jsonify, request, session, redirect, url_for, render_te
 import config
 import support
 import users
+import backup
 from delta_api import DeltaClient, DeltaAPIError
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -43,7 +44,12 @@ app = Flask(
 )
 
 # Persistent session secret (generated once, reused across restarts so
-# people don't get logged out every time the server restarts)
+# people don't get logged out every time the server restarts). Tries a
+# GitHub backup restore first -- otherwise a fresh secret.key on every
+# Render redeploy would silently log out every user each time.
+if not os.path.exists(SECRET_KEY_PATH):
+    backup.restore_json_file("backups/secret.key", SECRET_KEY_PATH)
+
 if os.path.exists(SECRET_KEY_PATH):
     with open(SECRET_KEY_PATH, "r") as f:
         app.secret_key = f.read().strip()
@@ -51,6 +57,7 @@ else:
     app.secret_key = secrets.token_hex(32)
     with open(SECRET_KEY_PATH, "w") as f:
         f.write(app.secret_key)
+    backup.backup_file("backups/secret.key", app.secret_key, "Backup: secret.key (first generation)")
 
 # username -> {"process": Popen, "stop_requested_at": float|None}
 _bot_processes = {}
@@ -63,7 +70,7 @@ def login_required(f):
         if "username" not in session:
             if request.path.startswith("/api/"):
                 return jsonify({"ok": False, "error": "Not logged in"}), 401
-            return redirect(url_for("login_page"))
+            return redirect(url_for("login_page", next=request.path))
         if users.is_suspended(session["username"]):
             # Access was revoked after this session started -- log them
             # out now rather than letting an already-open tab keep working.
@@ -79,7 +86,7 @@ def admin_required(f):
     @wraps(f)
     def wrapper(*args, **kwargs):
         if "username" not in session:
-            return redirect(url_for("login_page"))
+            return redirect(url_for("login_page", next=request.path))
         if not users.is_admin(session["username"]):
             return "Admins only.", 403
         return f(*args, **kwargs)
@@ -127,23 +134,31 @@ def register_page():
 
 @app.route("/login", methods=["GET", "POST"])
 def login_page():
+    def safe_next(value):
+        # Only allow same-site relative paths -- never redirect off-site.
+        if value and value.startswith("/") and not value.startswith("//"):
+            return value
+        return None
+
     if request.method == "GET":
-        return render_template("login.html", error=None)
+        return render_template("login.html", error=None, next=safe_next(request.args.get("next")))
+
+    next_url = safe_next(request.form.get("next"))
     username = request.form.get("username", "")
     password = request.form.get("password", "")
     ok, reason = users.verify_login(username, password)
     if ok:
         session["username"] = username.strip().lower()
-        return redirect(url_for("dashboard"))
+        return redirect(next_url or url_for("dashboard"))
     if reason == "pending":
         return render_template(
-            "login.html", error="Your account is waiting for admin approval. Check back soon."
+            "login.html", error="Your account is waiting for admin approval. Check back soon.", next=next_url
         )
     if reason == "suspended":
         return render_template(
-            "login.html", error="Your access has been suspended. Contact the admin for details."
+            "login.html", error="Your access has been suspended. Contact the admin for details.", next=next_url
         )
-    return render_template("login.html", error="Incorrect username or password")
+    return render_template("login.html", error="Incorrect username or password", next=next_url)
 
 
 @app.route("/logout")
@@ -606,9 +621,10 @@ def api_trades_export():
     username = session["username"]
     history = _read_trade_history(username)
     buf = _build_trade_history_workbook({username: history})
+    timestamp = time.strftime("%Y-%m-%d_%H-%M")
     return send_file(
         buf, as_attachment=True,
-        download_name=f"aurelius-algo-trades-{username}.xlsx",
+        download_name=f"aurelius-algo-trades-{username}-{timestamp}.xlsx",
         mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
     )
 
@@ -623,9 +639,10 @@ def admin_trades_export_all():
     for uname, _ in users.list_all_users():
         rows_by_user[uname] = _read_trade_history(uname)
     buf = _build_trade_history_workbook(rows_by_user)
+    timestamp = time.strftime("%Y-%m-%d_%H-%M")
     return send_file(
         buf, as_attachment=True,
-        download_name="aurelius-algo-all-trades.xlsx",
+        download_name=f"aurelius-algo-all-trades-{timestamp}.xlsx",
         mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
     )
 
@@ -919,6 +936,32 @@ def admin_api_overview():
     return jsonify({"ok": True, "users": overview, "unresolved_support": unresolved_support})
 
 
+@app.route("/admin/api/backup-now", methods=["POST"])
+@admin_required
+def admin_api_backup_now():
+    if not backup.ENABLED:
+        return jsonify({"ok": False, "error": "Backup is not configured (missing GITHUB_BACKUP_TOKEN/REPO)."}), 400
+    _backup_all_to_github()
+    return jsonify({"ok": True})
+
+
+@app.route("/admin/api/restore-now", methods=["POST"])
+@admin_required
+def admin_api_restore_now():
+    if not backup.ENABLED:
+        return jsonify({"ok": False, "error": "Backup is not configured (missing GITHUB_BACKUP_TOKEN/REPO)."}), 400
+    for uname, _ in users.list_all_users():
+        local_path = os.path.join(users.user_dir(uname), "trade_history.json")
+        content = backup.restore_file(f"backups/user_data/{uname}/trade_history.json")
+        if content is not None:
+            try:
+                with open(local_path, "w", encoding="utf-8") as f:
+                    f.write(content)
+            except OSError:
+                pass
+    return jsonify({"ok": True})
+
+
 def _background_watchdog():
     while True:
         with _processes_lock:
@@ -930,8 +973,64 @@ def _background_watchdog():
         time.sleep(2)
 
 
+# ----------------------------------------------------------------------
+# GitHub backup / restore -- survives Render's ephemeral filesystem
+# ----------------------------------------------------------------------
+def _restore_all_from_backup():
+    """
+    Runs once at process startup, BEFORE any requests are served.
+    Restores users.json and support_messages.json first (if missing --
+    e.g. after a Render redeploy wiped local disk), then, once we can
+    enumerate users again, restores each user's trade_history.json too.
+    No-ops harmlessly if backup.py isn't configured or files already
+    exist locally.
+    """
+    if not backup.ENABLED:
+        app.logger.warning(
+            "Backup is not configured (GITHUB_BACKUP_TOKEN / GITHUB_BACKUP_REPO "
+            "not set) -- data will NOT survive a Render redeploy or restart."
+        )
+        return
+    restored_users = backup.restore_json_file("backups/users.json", users.USERS_PATH)
+    backup.restore_json_file("backups/support_messages.json", support.SUPPORT_PATH)
+    if restored_users:
+        app.logger.info("Restored users.json from GitHub backup after empty local disk.")
+    for uname, _ in users.list_all_users():
+        local_path = os.path.join(users.user_dir(uname), "trade_history.json")
+        if backup.restore_json_file(f"backups/user_data/{uname}/trade_history.json", local_path):
+            app.logger.info("Restored trade_history.json for %s from GitHub backup.", uname)
+
+
+def _backup_all_to_github():
+    backup.backup_json_file("backups/users.json", users.USERS_PATH, "Backup: users.json")
+    backup.backup_json_file("backups/support_messages.json", support.SUPPORT_PATH, "Backup: support_messages.json")
+    for uname, _ in users.list_all_users():
+        local_path = os.path.join(users.user_dir(uname), "trade_history.json")
+        backup.backup_json_file(
+            f"backups/user_data/{uname}/trade_history.json", local_path,
+            f"Backup: trade history for {uname}",
+        )
+
+
+def _backup_watchdog():
+    # Give the app a minute to settle after startup before the first backup.
+    time.sleep(60)
+    while True:
+        try:
+            _backup_all_to_github()
+        except Exception:
+            app.logger.exception("Backup cycle failed")
+        time.sleep(300)  # every 5 minutes
+
+
+# Runs at import time -- so it fires under `gunicorn app:app` in
+# production, not just under `python app.py` locally.
+_restore_all_from_backup()
+threading.Thread(target=_backup_watchdog, daemon=True).start()
+threading.Thread(target=_background_watchdog, daemon=True).start()
+
+
 if __name__ == "__main__":
     with open(os.path.join(BASE_DIR, "server.pid"), "w") as f:
         f.write(str(os.getpid()))
-    threading.Thread(target=_background_watchdog, daemon=True).start()
     app.run(host="0.0.0.0", port=5000, debug=False)

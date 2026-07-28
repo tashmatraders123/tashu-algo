@@ -17,6 +17,7 @@
     {% endif %}
 
     <form method="POST" action="{{ url_for('login_page') }}">
+      {% if next %}<input type="hidden" name="next" value="{{ next }}">{% endif %}
       <div class="field">
         <label for="username">Username</label>
         <input type="text" id="username" name="username" autocomplete="username" required autofocus>
@@ -29,6 +30,7 @@
     </form>
 
     <p class="foot-link">No account yet? <a href="{{ url_for('register_page') }}">Create one</a></p>
+    <p class="foot-link"><a href="{{ url_for('admin_logs_page') }}">Admin: Activity &amp; Logs</a></p>
   </div>
 </div>
 {% endblock %}

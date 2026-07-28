@@ -29,6 +29,17 @@
   </div>
 
   <div class="panel">
+    <div class="panel-title">Data Backup <span id="backup-status" class="hint"></span></div>
+    <div class="hint" style="margin-bottom:14px;">
+      Backs up users.json, support messages, and everyone's trade history to GitHub every 5 minutes automatically, and restores them on server startup if local data is missing (e.g. after a Render redeploy).
+    </div>
+    <div class="btn-row">
+      <button id="btn-backup-now" class="btn btn-ghost">Backup Now</button>
+      <button id="btn-restore-now" class="btn btn-ghost">Restore From Backup</button>
+    </div>
+  </div>
+
+  <div class="panel">
     <div class="panel-title">Live Overview</div>
     <table class="simple" id="overview-table">
       <thead><tr><th>Username</th><th>Bot</th><th>Coin</th><th>Mode</th><th>Errors (recent)</th></tr></thead>
@@ -180,6 +191,42 @@
 
   refreshOverview();
   setInterval(refreshOverview, 5000);
+
+  // Backup / restore
+  const btnBackupNow = document.getElementById('btn-backup-now');
+  const btnRestoreNow = document.getElementById('btn-restore-now');
+  const backupStatus = document.getElementById('backup-status');
+
+  btnBackupNow.addEventListener('click', async () => {
+    btnBackupNow.disabled = true;
+    btnBackupNow.textContent = 'Backing up…';
+    try {
+      const res = await fetch('/admin/api/backup-now', { method: 'POST' });
+      const data = await res.json();
+      backupStatus.textContent = data.ok ? '— last backup just now' : `— ${data.error}`;
+      backupStatus.style.color = data.ok ? 'var(--teal)' : 'var(--red)';
+    } catch (e) {
+      backupStatus.textContent = '— could not reach server';
+      backupStatus.style.color = 'var(--red)';
+    }
+    btnBackupNow.disabled = false;
+    btnBackupNow.textContent = 'Backup Now';
+  });
+
+  btnRestoreNow.addEventListener('click', async () => {
+    if (!confirm('This restores trade history from the last backup for any user missing local data. Continue?')) return;
+    btnRestoreNow.disabled = true;
+    btnRestoreNow.textContent = 'Restoring…';
+    try {
+      const res = await fetch('/admin/api/restore-now', { method: 'POST' });
+      const data = await res.json();
+      alert(data.ok ? 'Restore complete.' : (data.error || 'Restore failed.'));
+    } catch (e) {
+      alert('Could not reach the server.');
+    }
+    btnRestoreNow.disabled = false;
+    btnRestoreNow.textContent = 'Restore From Backup';
+  });
 
   // Reset password modal
   const overlay = document.getElementById('reset-pw-modal-overlay');
