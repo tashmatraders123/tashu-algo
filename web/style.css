@@ -272,7 +272,22 @@ a:hover { text-decoration: underline; }
   font-size: 14.5px;
   letter-spacing: 0.01em;
   cursor: pointer;
+  position: relative;
+  overflow: hidden;
   transition: transform 0.15s var(--ease), box-shadow 0.15s var(--ease), filter 0.2s var(--ease);
+}
+
+.btn .ripple {
+  position: absolute;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.35);
+  transform: scale(0);
+  animation: ripple-out 0.6s var(--ease) forwards;
+  pointer-events: none;
+}
+
+@keyframes ripple-out {
+  to { transform: scale(2.5); opacity: 0; }
 }
 
 .btn:active { transform: translateY(2px); }
@@ -585,6 +600,7 @@ table.simple .empty-row td { color: var(--text-faint); font-style: italic; text-
 
 .ticker-item .sym { color: var(--gold-bright); font-weight: 600; }
 .ticker-item.muted { color: var(--text-faint); font-style: italic; }
+.ticker-item .sparkline { display: inline-block; vertical-align: middle; opacity: 0.85; margin-left: 2px; }
 
 /* ------------------------------------------------------------
    API key status row (compact, replaces always-visible fields)

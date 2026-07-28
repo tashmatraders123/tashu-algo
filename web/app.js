@@ -4,6 +4,23 @@
 
 (function () {
   const $ = (id) => document.getElementById(id);
+
+  // Tactile ripple feedback on every button press, site-wide (placed
+  // before the dashboard-only guard below so it works on every page).
+  document.addEventListener('click', (e) => {
+    const btn = e.target.closest('.btn');
+    if (!btn) return;
+    const rect = btn.getBoundingClientRect();
+    const size = Math.max(rect.width, rect.height);
+    const ripple = document.createElement('span');
+    ripple.className = 'ripple';
+    ripple.style.width = ripple.style.height = `${size}px`;
+    ripple.style.left = `${e.clientX - rect.left - size / 2}px`;
+    ripple.style.top = `${e.clientY - rect.top - size / 2}px`;
+    btn.appendChild(ripple);
+    setTimeout(() => ripple.remove(), 650);
+  });
+
   const statusPill = $('status-pill');
 
   if (!statusPill) return; // not on the dashboard page
@@ -38,6 +55,7 @@
   const btnCancelPasswordModal = $('btn-cancel-password-modal');
 
   let previousPrices = {};
+  let tickerHistory = {};
   let lastMarketState = null;
 
   let hadApiKeys = false;
@@ -159,6 +177,20 @@
   // ------------------------------------------------------------
   // Live price ticker tape
   // ------------------------------------------------------------
+  function buildSparkline(history, trendUp) {
+    if (history.length < 2) return '';
+    const w = 40, h = 16;
+    const min = Math.min(...history), max = Math.max(...history);
+    const range = max - min || 1;
+    const points = history.map((v, i) => {
+      const x = (i / (history.length - 1)) * w;
+      const y = h - ((v - min) / range) * h;
+      return `${x.toFixed(1)},${y.toFixed(1)}`;
+    }).join(' ');
+    const color = trendUp ? '#2fbf9d' : '#e0555a';
+    return `<svg class="sparkline" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}"><polyline points="${points}" fill="none" stroke="${color}" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+  }
+
   async function refreshTicker() {
     if (!tickerTrack) return;
     try {
@@ -176,7 +208,15 @@
             else if (price < prev) flashClass = 'flash-down';
           }
           previousPrices[t.symbol] = price;
-          return `<span class="ticker-item ${flashClass}"><span class="sym">${t.symbol}</span>${price.toLocaleString(undefined, {maximumFractionDigits: 2})}</span>`;
+
+          if (!tickerHistory[t.symbol]) tickerHistory[t.symbol] = [];
+          tickerHistory[t.symbol].push(price);
+          if (tickerHistory[t.symbol].length > 20) tickerHistory[t.symbol].shift();
+          const hist = tickerHistory[t.symbol];
+          const trendUp = hist.length > 1 ? hist[hist.length - 1] >= hist[0] : true;
+          const sparkline = buildSparkline(hist, trendUp);
+
+          return `<span class="ticker-item ${flashClass}"><span class="sym">${t.symbol}</span>${price.toLocaleString(undefined, {maximumFractionDigits: 2})}${sparkline}</span>`;
         })
         .join('');
       // Duplicated once for a seamless CSS marquee loop.
@@ -452,10 +492,26 @@
   // ------------------------------------------------------------
   const priceChartCanvas = $('price-chart');
   const chartSymbolLabel = $('chart-symbol-label');
+  const chartStatus = $('chart-status');
   let priceChart = null;
 
+  function setChartStatus(text) {
+    if (!chartStatus) return;
+    if (text) {
+      chartStatus.textContent = text;
+      chartStatus.style.display = 'flex';
+    } else {
+      chartStatus.style.display = 'none';
+    }
+  }
+
   function initPriceChart() {
-    if (!priceChartCanvas || typeof Chart === 'undefined') return;
+    if (!priceChartCanvas) return;
+    if (typeof Chart === 'undefined') {
+      console.error('Aurelius Algo: Chart.js failed to load from CDN.');
+      setChartStatus('Chart library failed to load. Check your connection and refresh.');
+      return;
+    }
     const ctx = priceChartCanvas.getContext('2d');
     const gradient = ctx.createLinearGradient(0, 0, 0, 220);
     gradient.addColorStop(0, 'rgba(232, 196, 107, 0.28)');
@@ -512,11 +568,22 @@
     if (!priceChartCanvas) return;
     try {
       const res = await fetch('/api/chart-data');
-      if (!res.ok) return;
+      if (!res.ok) {
+        setChartStatus(`Could not load chart (server error ${res.status}).`);
+        return;
+      }
       const data = await res.json();
-      if (!data.ok || !data.candles || !data.candles.length) return;
+      if (!data.ok) {
+        console.error('Aurelius Algo: /api/chart-data returned an error:', data.error);
+        setChartStatus(data.error || 'Could not load chart data.');
+        return;
+      }
+      if (!data.candles || !data.candles.length) {
+        setChartStatus('No candle data available yet for this symbol.');
+        return;
+      }
       if (!priceChart) initPriceChart();
-      if (!priceChart) return;
+      if (!priceChart) return; // Chart.js itself failed to load; status already set
 
       const labels = data.candles.map(c => new Date(c.t * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
       const closes = data.candles.map(c => c.c);
@@ -533,8 +600,12 @@
       priceChart.data.datasets[0].backgroundColor = gradient;
       priceChart.update();
 
+      setChartStatus(null);
       if (chartSymbolLabel) chartSymbolLabel.textContent = data.symbol || '';
-    } catch (e) { /* network hiccup, try again next tick */ }
+    } catch (e) {
+      console.error('Aurelius Algo: chart refresh failed:', e);
+      setChartStatus('Could not reach the server for chart data.');
+    }
   }
 
   refreshStatus();
