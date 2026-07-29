@@ -23,7 +23,6 @@
       "dry_run": false
     },
     "is_admin": false,
-    "approved": true,
-    "suspended": true
+    "approved": true
   }
 }
