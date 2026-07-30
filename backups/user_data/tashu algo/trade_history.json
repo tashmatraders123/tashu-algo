@@ -1,0 +1,1 @@
+[{"symbol": "BTCUSD", "direction": "short", "entry_price": 64620.5, "exit_price": 64729.45446905, "size": 50, "stage_at_close": "initial", "close_reason": "external", "opened_at": 1785421203, "closed_at": 1785421504, "realized_pnl_estimate": -5.44772345249985, "pnl_source": "estimate", "commission": null}]
