@@ -25,5 +25,20 @@
     "is_admin": false,
     "approved": true,
     "suspended": true
+  },
+  "tashu real": {
+    "password_hash": "scrypt:32768:8:1$7n20bGgoUBXYH5vQ$6ec4cc40c23de33dd435d82e88b5676f25efbef5e929dec3570c2523a375b879ccbdc00624c29de60051ed2e9c7e4c8f438d541ed051d3a29b2df87e27f46130",
+    "email": "powerhousetraderr@gmail.com",
+    "settings": {
+      "api_key": "",
+      "api_secret": "",
+      "use_testnet": true,
+      "symbol": "BTCUSD",
+      "fixed_size": 0,
+      "dry_run": true
+    },
+    "is_admin": false,
+    "approved": true,
+    "suspended": false
   }
 }
