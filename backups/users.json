@@ -6,7 +6,7 @@
       "api_secret": "t5AK4ZDYXpoEQkuucSOK13r4R9cxyx2ueohMem09gWUYyIgxl7KPPw8NEZgx",
       "use_testnet": true,
       "symbol": "BTCUSD",
-      "fixed_size": 100,
+      "fixed_size": 10,
       "dry_run": false
     },
     "is_admin": true,
